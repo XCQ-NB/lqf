@@ -1,0 +1,19 @@
+[Unit]
+Description=Tianwang Backend API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/www/wwwroot/tianwang/backend
+ExecStart=/usr/bin/python3 /www/wwwroot/tianwang/backend/run.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+Environment=TIANWANG_COS_MOUNT=/lhcos-data
+Environment=TIANWANG_COS_BUCKET=lhcos-8a072-1447557129
+Environment=TIANWANG_COS_REGION=ap-guangzhou
+Environment=TIANWANG_COS_PREFIX=tianwang
+
+[Install]
+WantedBy=multi-user.target

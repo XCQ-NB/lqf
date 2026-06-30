@@ -1,0 +1,3992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0d47a1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="天网运维">
+<link rel="manifest" href="manifest.json">
+<title>天网运维 - 水印相机</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:linear-gradient(180deg,#0d47a1 0%,#1565c0 40%,#e8eaf6 40%,#f5f5f5 100%);
+  min-height:100vh;min-height:100dvh;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;-webkit-user-select:none;
+}
+/* ===== 顶部标题栏 ===== */
+.header{
+  padding:14px 20px 6px;text-align:center;position:relative;
+}
+.header h1{font-size:20px;color:#fff;font-weight:700;letter-spacing:1px}
+.header p{font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px}
+.header .badge{
+  display:inline-block;background:rgba(255,255,255,0.2);border-radius:10px;
+  padding:1px 8px;font-size:10px;color:#fff;margin-top:4px;
+}
+/* ===== Tab 切换 ===== */
+.tab-bar{
+  display:flex;margin:0 16px;background:rgba(255,255,255,0.15);border-radius:10px;
+  padding:3px;backdrop-filter:blur(8px);
+}
+.tab-btn{
+  flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all 0.25s;background:transparent;color:rgba(255,255,255,0.75);
+  text-align:center;white-space:nowrap;
+}
+.tab-btn.active{background:#fff;color:#0d47a1;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+/* ===== 连接状态 ===== */
+.status-bar{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:5px 16px;font-size:11px;color:#fff;opacity:0.85;
+}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#4caf50}
+.status-dot.off{background:#f44336}
+/* ===== GPS 状态 ===== */
+.gps-bar{
+  display:none;align-items:center;justify-content:center;gap:6px;
+  padding:4px 16px;font-size:11px;color:#fff;opacity:0.85;
+}
+.gps-bar.show{display:flex}
+.gps-dot{width:7px;height:7px;border-radius:50%;background:#ff9800;animation:pulse 1.5s infinite}
+.gps-dot.ready{background:#4caf50;animation:none}
+.gps-dot.error{background:#f44336;animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+/* ===== 主内容区 ===== */
+.main-card{
+  margin:10px 16px 80px;background:#fff;border-radius:16px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;
+}
+/* === 水印设置面板 === */
+.wm-config{
+  border-bottom:1px solid #f0f0f0;
+}
+.wm-config-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;font-size:13px;color:#555;cursor:pointer;
+  background:#fafbfc;
+}
+.wm-config-header .arrow{transition:transform 0.25s;font-size:11px}
+.wm-config-header .arrow.open{transform:rotate(180deg)}
+.wm-config-body{
+  max-height:0;overflow:hidden;transition:max-height 0.3s ease;
+  padding:0 16px;
+}
+.wm-config-body.open{max-height:800px;padding:0 16px 12px}
+.wm-field{
+  width:100%;margin-top:8px;padding:8px 10px;border:1px solid #e0e0e0;
+  border-radius:8px;font-size:13px;background:#fafafa;color:#333;
+}
+.wm-field:focus{outline:none;border-color:#1565c0;background:#fff}
+.wm-field-row{display:flex;gap:8px}
+.wm-field-row .wm-field{flex:1}
+.wm-field-hint{font-size:10px;color:#999;margin-top:3px;padding-left:2px}
+/* ===== 图片预览区（通用） ===== */
+.preview-area{
+  min-height:220px;display:flex;align-items:center;justify-content:center;
+  background:#f0f4ff;position:relative;overflow:hidden;
+}
+.preview-area .placeholder{
+  text-align:center;padding:40px 20px;color:#90a4ae;
+}
+.preview-area .placeholder .icon{font-size:48px;display:block;margin-bottom:10px}
+.preview-area .placeholder p{font-size:13px;line-height:1.6}
+.preview-area img,.preview-area canvas{
+  width:100%;max-height:420px;object-fit:contain;display:none;
+}
+.preview-area img.show,.preview-area canvas.show{display:block}
+/* OCR 结果区 */
+.result-section{display:none;padding:16px}
+.result-section.show{display:block}
+.result-title{
+  font-size:14px;font-weight:700;color:#1565c0;margin-bottom:10px;
+  display:flex;align-items:center;gap:6px;
+}
+.result-table{width:100%;border-collapse:collapse}
+.result-table td{
+  padding:7px 6px;font-size:13px;border-bottom:1px solid #f0f0f0;
+}
+.result-table td:first-child{
+  color:#888;white-space:nowrap;width:65px;font-size:12px;
+}
+.result-table td:last-child{color:#333;font-weight:500}
+.result-table input{
+  width:100%;border:1px solid #e0e0e0;border-radius:6px;
+  padding:6px 8px;font-size:13px;background:#fafafa;color:#333;
+}
+.result-table input:focus{outline:none;border-color:#1565c0;background:#fff}
+/* 动作按钮 */
+.action-row{
+  display:flex;gap:8px;padding:0 16px 16px;display:none;
+}
+.action-row.show{display:flex}
+.btn{
+  flex:1;padding:11px;border:none;border-radius:10px;font-size:13px;
+  font-weight:600;cursor:pointer;transition:all 0.2s;text-align:center;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+}
+.btn:active{transform:scale(0.96)}
+.btn-reset{background:#f5f5f5;color:#666}
+.btn-reset:active{background:#e0e0e0}
+.btn-submit{background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff}
+.btn-submit:active{opacity:0.9}
+.btn-download{background:linear-gradient(135deg,#00897b,#00695c);color:#fff}
+.btn-download:active{opacity:0.9}
+/* ===== 加载状态 ===== */
+.loading-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,0.5);
+  display:none;align-items:center;justify-content:center;z-index:10;
+}
+.loading-overlay.show{display:flex}
+.spinner{
+  width:36px;height:36px;border:3px solid rgba(255,255,255,0.3);
+  border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#fff;font-size:13px;margin-top:10px;text-align:center}
+.loading-box{text-align:center}
+/* ===== 底部操作栏 ===== */
+.bottom-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:#fff;padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  box-shadow:0 -2px 16px rgba(0,0,0,0.08);display:flex;gap:10px;z-index:100;
+  flex-wrap:wrap;
+}
+.bottom-bar .btn-capture{
+  flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;
+  font-weight:600;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:6px;transition:all 0.2s;
+  min-width:80px;
+}
+.bottom-bar .btn-capture:active{transform:scale(0.96)}
+.btn-camera{background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff}
+.btn-gallery{background:#f0f4ff;color:#1565c0;border:1.5px solid #bbdefb!important}
+.btn-refresh{
+  background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7!important;
+  font-size:12px!important;flex:0.6!important;
+}
+/* ===== 提示 Toast ===== */
+.toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%);
+  background:#333;color:#fff;padding:10px 24px;border-radius:20px;
+  font-size:13px;z-index:9999;opacity:0;transition:opacity 0.3s;
+  pointer-events:none;white-space:nowrap;
+}
+.toast.show{opacity:1}
+/* 隐藏文件输入 */
+#fileInput{display:none}
+/* ===== 弹窗 ===== */
+.modal{
+  position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;
+  display:none;align-items:center;justify-content:center;
+}
+.modal.show{display:flex}
+.modal-card{
+  background:#fff;border-radius:16px;padding:28px 22px;text-align:center;
+  width:320px;max-width:90vw;
+}
+.modal-card .icon{font-size:48px;display:block;margin-bottom:10px}
+.modal-card h3{font-size:17px;color:#333;margin-bottom:6px}
+.modal-card p{font-size:13px;color:#888;margin-bottom:18px;line-height:1.5}
+.modal-card .btn-ok{
+  width:100%;padding:11px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;
+  font-size:14px;font-weight:600;cursor:pointer;
+}
+.modal-card .btn-cancel{
+  width:100%;padding:11px;border:1px solid #ddd;border-radius:10px;
+  background:#f5f5f5;color:#666;font-size:14px;cursor:pointer;margin-top:8px;
+}
+/* 视图切换 */
+.view{display:none}
+.view.active{display:block}
+/* ===== 响应式 ===== */
+@media(min-width:768px){
+  .main-card{max-width:500px;margin:12px auto}
+  .bottom-bar{max-width:500px;left:50%;transform:translateX(-50%);border-radius:14px 14px 0 0}
+  .tab-bar{max-width:500px;margin:0 auto}
+}
+/* ===== 工单管理 ===== */
+.order-card{
+  background:#fff;border:1px solid #e8e8e8;border-radius:12px;
+  padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+.order-card .oc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.order-card .oc-id{font-size:11px;color:#888;font-family:monospace}
+.order-card .oc-status{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+.oc-status-pending{background:#fff3e0;color:#e65100}
+.oc-status-processing{background:#e3f2fd;color:#1565c0}
+.oc-status-done{background:#e8f5e9;color:#2e7d32}
+.order-card .oc-point{font-size:14px;font-weight:700;color:#333;margin-bottom:4px}
+.order-card .oc-desc{font-size:12px;color:#666;margin-bottom:6px;line-height:1.5}
+.order-card .oc-meta{font-size:11px;color:#999;display:flex;gap:12px;flex-wrap:wrap}
+.order-card .oc-actions{margin-top:10px;display:flex;gap:8px}
+.order-card .oc-btn{
+  flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;text-align:center
+}
+.oc-btn-accept{background:#1565c0;color:#fff}
+.oc-btn-report{background:#ff6f00;color:#fff}
+.oc-btn-dispatch{background:#ff6f00;color:#fff}
+.order-empty{text-align:center;padding:40px 20px;color:#bbb;font-size:13px}
+.order-empty .icon{font-size:40px;display:block;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<!-- ========== 登录验证遮罩 ========== -->
+<div id="loginOverlay" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(180deg,#0d47a1 0%,#1565c0 50%,#e8eaf6 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;padding:24px 20px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+    <!-- Step 1: 平台账号登录 -->
+    <div id="loginStep1">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:40px;">🔐</div>
+        <h2 style="font-size:20px;color:#0d47a1;margin:8px 0 4px;">天网运维</h2>
+        <p style="font-size:12px;color:#999;">请先登录平台账号</p>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">用户名</label>
+        <input id="loginUsername" type="text" placeholder="请输入平台账号" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">密码</label>
+        <input id="loginPassword" type="password" placeholder="请输入密码" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;">
+      </div>
+      <div id="loginError" style="color:#f44336;font-size:12px;margin-bottom:10px;display:none;text-align:center;"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#666;margin-bottom:12px;cursor:pointer;">
+        <input type="checkbox" id="trustDevice" checked style="width:16px;height:16px;">
+        记住登录，下次免输入
+      </label>
+      <button onclick="doPlatformLogin()" style="width:100%;padding:12px;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;">登 录</button>
+    </div>
+  </div>
+</div>
+
+<!-- 主应用内容（登录后显示） -->
+<div id="appContent" style="display:none;">
+
+<!-- 顶部 -->
+<div class="header">
+  <h1>📷 天网运维</h1>
+  <p>水印相机 · 施工记录 · 工单管理 <span id="appVer" style="opacity:0.5;font-size:10px;">v26.661</span></p>
+  <button onclick="doLogout()" title="切换账号"
+    style="position:absolute;top:12px;right:54px;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;font-size:13px;cursor:pointer;color:#fff;line-height:30px;text-align:center;padding:0">🔄</button>
+  <button onclick="openServerModal()" title="服务器设置"
+    style="position:absolute;top:12px;right:14px;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;font-size:14px;cursor:pointer;color:#fff;line-height:30px;text-align:center;padding:0">⚙️</button>
+</div>
+
+<!-- Tab 切换 -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('watermark')" id="tabWm">📷 水印拍照</button>
+  <button class="tab-btn" onclick="switchTab('orders')" id="tabOrders">📋 工单</button>
+  <button class="tab-btn" onclick="switchTab('dailylog')" id="tabDailyLog">📝 施工日志</button>
+</div>
+
+<!-- 连接状态 -->
+<div class="status-bar" id="statusBar">
+  <span class="status-dot" id="statusDot"></span>
+  <span id="statusText">检查服务...</span>
+  <span style="flex:1"></span>
+  <span id="statusApiBase" style="font-size:10px;color:rgba(255,255,255,0.6);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="API_BASE"></span>
+  <a id="statusRetry" onclick="checkService();return false" style="display:none;font-size:11px;color:#fff;text-decoration:underline;cursor:pointer;white-space:nowrap;margin-left:6px">重试</a>
+</div>
+
+<!-- GPS 状态（水印模式专属） -->
+<div class="gps-bar" id="gpsBar" onclick="if(!wmState.gps.lat)requestGps()" style="cursor:pointer" title="点击开启定位">
+  <span class="gps-dot" id="gpsDot"></span>
+  <span id="gpsText">正在获取GPS...</span>
+  <span style="flex:1"></span>
+  <span id="gpsBarAction" style="font-size:11px;color:#fff;opacity:0.9;display:none">开启定位 ›</span>
+</div>
+
+<!-- ========== 视图1: 水印拍照 ========== -->
+<div class="view active" id="viewWatermark">
+  <div class="main-card">
+    <!-- 水印设置 -->
+    <div class="wm-config">
+      <div class="wm-config-header" onclick="toggleWmConfig()">
+        <span>⚙️ 水印字段设置</span>
+        <span class="arrow open" id="wmConfigArrow">▼</span>
+      </div>
+      <div class="wm-config-body open" id="wmConfigBody">
+        <div class="wm-field-row">
+          <input class="wm-field" id="wm_location" placeholder="📍 地点（GPS自动定位）" readonly style="color:#888;flex:2;background:#f0f0f0;cursor:default">
+          <button class="btn-gps-refresh" onclick="refreshGPS()" title="刷新GPS" style="flex:0.4;padding:8px;border:1px solid #ddd;border-radius:8px;background:#f5f5f5;font-size:11px;cursor:pointer;color:#666">🔄 刷新</button>
+        </div>
+        <div class="wm-field-hint" id="wmGpsHint">等待GPS定位...</div>
+        <select class="wm-field" id="wm_project" required style="appearance:auto;-webkit-appearance:auto">
+          <option value="">🏷️ 选择项目分类（必选）</option>
+        </select>
+        <input class="wm-field" id="wm_point" placeholder="🔧 安装点位（必填，如：高新01号杆、A区3号箱）" required>
+        <input type="hidden" id="wm_person" value="">
+        <input class="wm-field" id="wm_person_display" placeholder="👤 负责人（登录账号自动同步）" readonly style="color:#888;background:#f0f0f0;cursor:default">
+        <select class="wm-field" id="wm_build" required style="appearance:auto;-webkit-appearance:auto">
+          <option value="">🔨 选择施工阶段（必选）</option>
+        </select>
+        <input class="wm-field" id="wm_fault_reason" placeholder="⚠️ 故障原因（必填）" style="display:none">
+        <div id="buildExtras" style="display:none"></div>
+        <input class="wm-field" id="wm_remark" placeholder="📝 备注（可选）">
+        <div style="display:none">
+          <input id="wm_lng"><input id="wm_lat">
+        </div>
+      </div>
+    </div>
+
+    <!-- 预览区 -->
+    <div class="preview-area" id="wmPreviewArea">
+      <div class="placeholder" id="wmPlaceholder">
+        <span class="icon">📸</span>
+        <p>请先完成上方必填项，再点击拍照<br><span style="font-size:11px;color:#bbb">项目 → 安装点位 → 施工阶段（负责人已自动绑定）</span></p>
+      </div>
+      <canvas id="wmCanvas"></canvas>
+      <div class="loading-overlay" id="wmLoading">
+        <div class="loading-box">
+          <div class="spinner"></div>
+          <div class="loading-text" id="wmLoadingText">渲染水印...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 水印操作按钮 -->
+    <div class="action-row" id="wmActionRow">
+      <button class="btn btn-download" onclick="downloadWatermark()">💾 保存照片</button>
+      <button class="btn btn-reset" onclick="resetWatermark()">🔄 重拍</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 视图2: 工单管理（派单/接单/回单） ========== -->
+<div class="view" id="viewOrders">
+  <div class="main-card">
+    <!-- site_admin: 运维派单视图 -->
+    <div id="orderAdminView" style="display:none">
+      <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="font-size:15px;font-weight:700;color:#1565c0">📋 运维派单</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="openMobileCreateOrder('fault')" style="padding:6px 10px;border:none;background:#c62828;color:#fff;border-radius:6px;font-size:11px;cursor:pointer">故障派单</button>
+          <button onclick="openMobileCreateOrder('construction')" style="padding:6px 10px;border:none;background:#ff6f00;color:#fff;border-radius:6px;font-size:11px;cursor:pointer">施工派单</button>
+          <button type="button" onclick="refreshOrderList()" style="padding:6px 14px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:6px;font-size:12px;cursor:pointer">🔄 刷新</button>
+        </div>
+      </div>
+      <div id="orderListAdmin" style="padding:10px 16px"></div>
+    </div>
+
+    <!-- 施工人员: 我的工单视图 -->
+    <div id="orderWorkerView" style="display:none">
+      <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:15px;font-weight:700;color:#1565c0">📋 我的工单</span>
+        <span id="orderWorkerName" style="font-size:11px;color:#888"></span>
+      </div>
+      <div id="orderListWorker" style="padding:10px 16px"></div>
+    </div>
+
+    <!-- 接单/回单操作弹窗 -->
+    <div id="orderDetailModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;align-items:flex-end;justify-content:center">
+      <div style="background:#fff;width:100%;max-width:500px;border-radius:16px 16px 0 0;padding:20px 16px;max-height:80vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span style="font-size:16px;font-weight:700" id="odTitle">工单详情</span>
+          <button onclick="closeOrderDetail()" style="border:none;background:#f5f5f5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer">✕</button>
+        </div>
+        <div id="odBody" style="font-size:13px;line-height:1.8;color:#444"></div>
+        <div id="odActions" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 视图4: 施工日志导出 ========== -->
+<div class="view" id="viewDailyLog">
+  <div class="main-card" style="padding:16px">
+    <div style="font-size:16px;font-weight:700;color:#1565c0;margin-bottom:12px">📝 每日施工日志</div>
+    <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6">按日期汇总当天上传的水印照片与施工记录，导出 Word 文档（.docx），可分享到微信/钉钉。</p>
+    <div style="margin-bottom:10px">
+      <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">日期</label>
+      <input type="date" id="logDate" class="wm-field" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box" onchange="loadDailyLogData()">
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">项目分类</label>
+      <select id="logProject" onchange="loadLogMeta();loadDailyLogData()" class="wm-field" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;appearance:auto;-webkit-appearance:auto">
+        <option value="">全部项目</option>
+      </select>
+    </div>
+    <div style="background:#fafbfc;border:1px solid #eee;border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600;color:#1565c0;margin-bottom:8px">📋 工程信息（可随时修改，导出时写入 Word）</div>
+      <div style="margin-bottom:8px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">工程名称</label>
+        <input id="logEngName" placeholder="如：南昌县陆港天网" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:8px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">建设单位</label>
+        <input id="logOwnerUnit" placeholder="如：中国联通南昌市分公司" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:8px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">监理单位</label>
+        <input id="logSupervisorUnit" placeholder="监理单位名称" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">承建单位</label>
+        <input id="logContractorUnit" placeholder="承建单位名称" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box">
+      </div>
+      <button onclick="saveLogMeta()" style="width:100%;padding:10px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">💾 保存工程信息</button>
+      <div id="logMetaHint" style="font-size:11px;color:#999;margin-top:6px;text-align:center">按项目分类分别保存，切换项目会自动加载</div>
+    </div>
+    <div id="logPreview" style="background:#f5f9ff;border:1px solid #dbeafe;border-radius:8px;padding:12px;font-size:13px;color:#444;margin-bottom:10px;min-height:48px">选择日期后点击「预览」加载记录</div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">导出内容</label>
+      <select id="logPhotoMode" class="wm-field" onchange="toggleLogPhotoPicker()" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;appearance:auto;-webkit-appearance:auto">
+        <option value="share" selected>分享版（推荐，体积小，可一键发微信）</option>
+        <option value="none">纯文字（不含照片）</option>
+        <option value="full">完整版（高清，适合存档）</option>
+      </select>
+    </div>
+    <div id="logPhotoPickerWrap" style="display:none;margin-bottom:12px;background:#fafbfc;border:1px solid #eee;border-radius:10px;padding:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
+        <span style="font-size:12px;color:#666;font-weight:600">选择嵌入 Word 的照片</span>
+        <span style="display:flex;gap:6px">
+          <button type="button" onclick="selectAllLogPhotos(true)" style="padding:4px 8px;font-size:11px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:6px;cursor:pointer">全选</button>
+          <button type="button" onclick="selectAllLogPhotos(false)" style="padding:4px 8px;font-size:11px;border:1px solid #ccc;background:#fff;color:#666;border-radius:6px;cursor:pointer">全不选</button>
+        </span>
+      </div>
+      <div id="logPhotoPicker" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:300px;overflow-y:auto"></div>
+      <div id="logPhotoPickHint" style="font-size:11px;color:#888;margin-top:8px;text-align:center">已选 0 张</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="previewDailyLog()" style="flex:1;padding:12px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">预览</button>
+      <button type="button" id="btnExportDailyLog" onclick="exportDailyLog()" style="flex:2;padding:12px;border:none;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">📤 导出并分享</button>
+    </div>
+    <div style="font-size:11px;color:#1565c0;margin-top:10px;line-height:1.55;background:#e3f2fd;border-radius:6px;padding:8px">💡 可先勾选要输出的照片，再点导出。导出完成后自动弹出系统分享，选微信、钉钉等即可。</div>
+  </div>
+</div>
+
+<!-- 施工日志分享弹窗（仅自动分享失败时显示） -->
+<div id="logShareModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:flex-end;justify-content:center">
+  <div style="background:#fff;width:100%;max-width:500px;border-radius:16px 16px 0 0;padding:20px 16px 24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:16px;font-weight:700;color:#1565c0">📄 施工日志已生成</span>
+      <button type="button" onclick="closeLogShareModal()" style="border:none;background:#f5f5f5;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <div id="logShareFname" style="font-size:13px;color:#666;margin-bottom:4px;word-break:break-all"></div>
+    <div id="logShareSize" style="font-size:12px;color:#888;margin-bottom:12px"></div>
+    <div id="logShareWechatTip" style="display:none;font-size:12px;color:#e65100;background:#fff8e1;border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.55">微信内<strong>无法直接分享文件</strong>（系统限制）。文件已触发保存，请到聊天中点 <b>＋</b> → <b>文件</b> → 从手机存储选择刚下载的 Word。</div>
+    <button type="button" id="btnShareLogWechat" onclick="shareDailyLogToOtherApps()" style="width:100%;padding:14px;border:none;border-radius:10px;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px">📤 发送到其他应用</button>
+    <button type="button" onclick="saveDailyLogFile()" style="width:100%;padding:12px;border:1px solid #1565c0;border-radius:10px;background:#fff;color:#1565c0;font-size:14px;font-weight:600;cursor:pointer">💾 重新下载 Word</button>
+    <div id="logShareWxHint" style="display:none;font-size:11px;color:#888;margin-top:10px;line-height:1.55;text-align:center">保存后：微信聊天 → ＋ → 文件 → 从手机存储选择刚下载的 Word</div>
+  </div>
+</div>
+
+<!-- 底部操作栏 -->
+<div class="bottom-bar" id="bottomBar">
+  <button class="btn-capture btn-camera" onclick="openCamera()">📷 拍照</button>
+  <button class="btn-capture btn-gallery" onclick="openGallery()">🖼️ 相册</button>
+  <button class="btn-capture btn-refresh" id="btnRefreshGps" onclick="refreshGPS()" style="display:none">📍 刷新GPS</button>
+</div>
+
+<!-- 隐藏文件输入 -->
+<input type="file" id="fileInput" accept="image/*" capture="environment" onchange="handleFile(this)">
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 成功弹窗 -->
+<div class="modal" id="successModal">
+  <div class="modal-card">
+    <span class="icon">✅</span>
+    <h3>操作成功</h3>
+    <p id="successMsg">数据已保存</p>
+    <button class="btn-ok" onclick="closeSuccess()">继续</button>
+  </div>
+</div>
+
+<!-- 预览弹窗（大图查看水印结果） -->
+<div class="modal" id="previewModal">
+  <div class="modal-card" style="max-width:95vw;max-height:90vh;overflow:auto;padding:16px">
+    <h3 style="margin-bottom:10px">📷 水印照片预览</h3>
+    <img id="previewModalImg" style="width:100%;border-radius:8px;display:block">
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn-ok" onclick="downloadWatermark()" style="flex:1">💾 保存到相册</button>
+      <button class="btn-cancel" onclick="document.getElementById('previewModal').classList.remove('show')" style="flex:1">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 服务器配置弹窗 -->
+<div class="modal" id="serverModal">
+  <div class="modal-card" style="max-width:340px">
+    <span class="icon">⚙️</span>
+    <h3>设置服务器地址</h3>
+    <p style="font-size:13px;color:#666;margin:8px 0 16px;line-height:1.6">请输入平台服务器地址（手机与PC需在同一网络）</p>
+    <div style="text-align:left;margin-bottom:12px">
+      <label style="font-size:13px;color:#333;font-weight:600">服务器地址</label>
+      <input id="serverAddrInput" type="text" placeholder="如: http://192.168.1.100:8080"
+        style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none">
+      <p style="font-size:11px;color:#999;margin-top:4px">端口默认 8080，留空使用当前地址</p>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button onclick="closeServerModal()" style="flex:1;padding:10px;border:1px solid #ddd;background:#f5f5f5;border-radius:8px;font-size:14px;cursor:pointer">取消</button>
+      <button onclick="saveServerAddr()" style="flex:1;padding:10px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== 全局状态 ====================
+var API_BASE = getServerAddr();
+window.API_BASE = API_BASE;
+var OCR_ENDPOINT = '/api/ocr';
+var currentMode = 'watermark';
+
+// 水印模式状态
+var wmState = {
+  gps: { lat: null, lng: null, acc: null, useLat: null, useLng: null },
+  image: null,
+  watermarked: null,
+  gpsWatchId: null,
+  gpsGuideDismissed: false
+};
+
+// 水印 Logo 已关闭（不显示联通标识）
+var wmLogoImg = null;
+
+// OCR 模式状态
+var ocrState = {
+  currentResult: null,
+  currentFile: null
+};
+
+// ==================== 初始化 ====================
+window.addEventListener('DOMContentLoaded', function(){
+  // 重置功能：?reset=1 清除所有 localStorage 并刷新
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('reset') === '1') {
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log('reset: cleared all storage');
+    window.location.href = window.location.origin + window.location.pathname;
+    return;
+  }
+
+  // 调试日志函数（只记录，不自动弹窗）
+  function dbg(msg){
+    console.log(msg);
+    var log = document.getElementById('debugLog');
+    if (log) {
+      var div = document.createElement('div');
+      div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+      log.appendChild(div);
+      while(log.children.length > 50) log.removeChild(log.firstChild);
+    }
+  }
+
+  function toggleDebugPanel(){
+    var panel = document.getElementById('debugPanel');
+    if (!panel) return;
+    if (panel.style.display === 'none' || !panel.style.display) {
+      panel.style.display = '';
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+
+  dbg('DOMContentLoaded fired');
+  dbg('API_BASE 初始值: ' + (API_BASE || '(空)'));
+  try {
+    dbg('调用 initServer()...');
+    initServer();
+    dbg('initServer 完成, API_BASE: ' + API_BASE);
+    dbg('调用 checkService()...');
+    checkService();
+    dbg('checkService 已调用');
+    dbg('调用 registerSW()...');
+    registerSW();
+    dbg('registerSW 完成');
+    dbg('调用 switchTab()...');
+    switchTab('watermark');
+    dbg('初始化完成');
+  } catch(e) {
+    dbg('初始化出错: ' + (e && e.message || e));
+    console.error('init error:', e);
+    var retry = document.getElementById('statusRetry');
+    if (retry) retry.style.display = '';
+    var txt = document.getElementById('statusText');
+    if (txt) txt.textContent = '初始化出错，请点重试';
+  }
+});
+
+function getServerAddr(){
+  if (window.location.protocol === 'file:') return '';
+  // 优先使用当前访问地址（nginx 已配置 /api 反向代理）
+  if (window.location.origin && window.location.origin !== 'null') {
+    console.log('getServerAddr: using origin', window.location.origin);
+    return window.location.origin;
+  }
+  var saved = localStorage.getItem('ocr_server_addr');
+  if (saved) { console.log('getServerAddr: using saved', saved); return saved; }
+  console.log('getServerAddr: using localhost');
+  return 'http://127.0.0.1:8899';
+}
+
+function initServer(){
+  // 优先用当前访问地址（nginx 反向代理 /api）
+  if (window.location.origin && window.location.origin !== 'null' && window.location.protocol !== 'file:') {
+    API_BASE = window.location.origin;
+    window.API_BASE = API_BASE;
+    localStorage.setItem('ocr_server_addr', API_BASE);
+    console.log('initServer: using current origin', API_BASE);
+    return;
+  }
+  var saved = localStorage.getItem('ocr_server_addr');
+  if (saved){
+    API_BASE = saved;
+    window.API_BASE = API_BASE;
+    console.log('initServer: using saved', API_BASE);
+    return;
+  }
+  if (window.location.protocol === 'file:'){
+    document.getElementById('serverAddrInput').value = '';
+    document.getElementById('serverModal').classList.add('show');
+  }
+  window.API_BASE = API_BASE;
+}
+
+function registerSW(){
+  if ('serviceWorker' in navigator){
+    // 用固定版本号，与 sw.js 中的 CACHE_NAME 末尾数字保持一致
+    navigator.serviceWorker.register('sw.js?v=17').then(function(reg){
+      if (reg) {
+        // 强制检查更新
+        reg.update && reg.update();
+        // 如果已有等待中的 SW，通知它立即激活
+        if (reg.waiting) {
+          reg.waiting.postMessage({type:'SKIP_WAITING'});
+        }
+        // 监听新 SW 进入等待状态
+        reg.addEventListener('updatefound', function() {
+          var newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', function() {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // 新 SW 已安装，通知用户刷新
+                showToast('🔃 检测到新版本，即将自动刷新...');
+                newWorker.postMessage({type:'SKIP_WAITING'});
+                setTimeout(function(){ window.location.reload(); }, 1500);
+              }
+            });
+          }
+        });
+      }
+    }).catch(function(e){ console.warn('SW register failed:', e); });
+
+    // 监听 SW 发来的消息：激活后通知页面刷新
+    navigator.serviceWorker.addEventListener('message', function(e){
+      if (e && e.data && e.data.type === 'SW_UPDATED') {
+        // 静默刷新，加载最新版页面
+        window.location.reload();
+      }
+    });
+  }
+}
+
+// ==================== Tab 切换 ====================
+function switchTab(mode){
+  currentMode = mode;
+  document.getElementById('tabWm').classList.toggle('active', mode === 'watermark');
+  document.getElementById('tabOrders').classList.toggle('active', mode === 'orders');
+  document.getElementById('tabDailyLog').classList.toggle('active', mode === 'dailylog');
+  document.getElementById('viewWatermark').classList.toggle('active', mode === 'watermark');
+  document.getElementById('viewOrders').classList.toggle('active', mode === 'orders');
+  document.getElementById('viewDailyLog').classList.toggle('active', mode === 'dailylog');
+
+  var bottomBar = document.getElementById('bottomBar');
+  if (bottomBar) bottomBar.style.display = (mode === 'watermark') ? '' : 'none';
+
+  // 底部按钮适配
+  var btnGps = document.getElementById('btnRefreshGps');
+  btnGps.style.display = (mode === 'watermark') ? '' : 'none';
+
+  // 水印模式：直接请求系统定位授权
+  if (mode === 'watermark'){
+    requestGps();
+  } else {
+    stopGPS();
+  }
+
+  // 工单模式：加载数据
+  if (mode === 'orders') {
+    loadOrderList();
+  }
+  if (mode === 'dailylog') {
+    initDailyLogView();
+  }
+}
+
+// ==================== GPS 定位 ====================
+// WGS84 → GCJ02（火星坐标）转换，适用于高德/腾讯地图
+function wgs84ToGcj02(wgs_lng, wgs_lat) {
+  var a = 6378245.0, ee = 0.00669342162296594323;
+  function transformLat(x, y) {
+    var ret = -100.0 + 2.0*x + 3.0*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
+    ret += (20.0*Math.sin(6.0*x*Math.PI) + 20.0*Math.sin(2.0*x*Math.PI))*2.0/3.0;
+    ret += (20.0*Math.sin(y*Math.PI) + 40.0*Math.sin(y/3.0*Math.PI))*2.0/3.0;
+    ret += (160.0*Math.sin(y/12.0*Math.PI) + 320.0*Math.sin(y*Math.PI/30.0))*2.0/3.0;
+    return ret;
+  }
+  function transformLng(x, y) {
+    var ret = 300.0 + x + 2.0*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x));
+    ret += (20.0*Math.sin(6.0*x*Math.PI) + 20.0*Math.sin(2.0*x*Math.PI))*2.0/3.0;
+    ret += (20.0*Math.sin(x*Math.PI) + 40.0*Math.sin(x/3.0*Math.PI))*2.0/3.0;
+    ret += (150.0*Math.sin(x/12.0*Math.PI) + 300.0*Math.sin(x/30.0*Math.PI))*2.0/3.0;
+    return ret;
+  }
+  var dLat = transformLat(wgs_lng - 105.0, wgs_lat - 35.0);
+  var dLng = transformLng(wgs_lng - 105.0, wgs_lat - 35.0);
+  var radLat = wgs_lat / 180.0 * Math.PI;
+  var magic = Math.sin(radLat); magic = 1 - ee*magic*magic;
+  var sqrtMagic = Math.sqrt(magic);
+  dLat = (dLat*180.0) / ((a*(1-ee))/(magic*sqrtMagic)*Math.PI);
+  dLng = (dLng*180.0) / (a/sqrtMagic*Math.cos(radLat)*Math.PI);
+  return { lng: wgs_lng + dLng, lat: wgs_lat + dLat };
+}
+
+// GPS 坐标处理（v26.631 修正）：
+// 手机GPS原始坐标直接存储（不转换），用于水印和奥维导航。
+// 逆地址解析：手机GPS可能因定位方式不同返回WGS-84或GCJ-02，
+//   统一做 WGS84→GCJ02 转换后再查高德/腾讯，确保地址准确。
+var gpsSkipConversion = false; // 废弃，保留兼容
+
+function applyGpsCoords(lat, lng, acc) {
+  // 手机 GPS 原始坐标直接存储
+  wmState.gps.lat = lat;
+  wmState.gps.lng = lng;
+  wmState.gps.acc = acc;
+  wmState.gps.useLat = lat;
+  wmState.gps.useLng = lng;
+  updateGpsStatus('ready', 'GPS已定位 (精度±' + Math.round(acc) + 'm)');
+  document.getElementById('wm_lat').value = lat.toFixed(6);
+  document.getElementById('wm_lng').value = lng.toFixed(6);
+  var hint = '精度: ±' + Math.round(acc) + 'm | ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
+  document.getElementById('wmGpsHint').textContent = hint;
+  // 逆地址解析：WGS84→GCJ02 转换后再查地图服务，确保地址正确
+  var locInput = document.getElementById('wm_location');
+  if (!locInput.value || locInput.value === '' || locInput.value === '等待GPS定位...') {
+    var gcj = wgs84ToGcj02(lng, lat);
+    fetchAddress(gcj.lat, gcj.lng, function(addr){
+      if (addr) locInput.value = addr;
+    }, 'gcj02');
+  }
+}
+
+// ==================== 表单字段记忆 ====================
+var WM_FIELDS_KEY = 'tianwang_wm_last_fields';
+
+// 保存当前填写字段到 localStorage（拍照渲染水印时、上传成功时调用）
+function saveWmFields() {
+  var data = {
+    project:   document.getElementById('wm_project').value || '',
+    point:     document.getElementById('wm_point').value || '',
+    person:    document.getElementById('wm_person').value || '',
+    build:     document.getElementById('wm_build').value || '',
+    faultReason: document.getElementById('wm_fault_reason').value || '',
+    remark:    document.getElementById('wm_remark').value || '',
+    savedAt:   new Date().toISOString()
+  };
+  try { localStorage.setItem(WM_FIELDS_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+// 从 localStorage 恢复上次填写的字段（登录后/页面加载时调用）
+// delay: 等待 lockPersonSelect + onPersonChange 完成（需延迟设值 build）
+function restoreWmFields(delay) {
+  var data;
+  try { data = JSON.parse(localStorage.getItem(WM_FIELDS_KEY)); } catch(e) { return; }
+  if (!data) return;
+
+  setTimeout(function() {
+    // 项目分类
+    if (data.project) {
+      var prj = document.getElementById('wm_project');
+      if (prj) prj.value = data.project;
+    }
+    // 安装点位
+    if (data.point) {
+      var pt = document.getElementById('wm_point');
+      if (pt) { pt.value = data.point; pt.style.display = ''; pt.required = true; }
+    }
+    // 负责人由登录账号自动同步，不从本地缓存恢复
+    // 施工内容 — 需等 onPersonChange 填充选项后再设值
+    if (data.build) {
+      var buildSel = document.getElementById('wm_build');
+      if (buildSel && buildSel.options.length > 1) {
+        buildSel.value = typeof normalizeBuildName === 'function' ? normalizeBuildName(data.build) : data.build;
+        if (typeof toggleFaultReason === 'function') toggleFaultReason();
+        if (typeof onBuildChange === 'function') onBuildChange();
+      }
+    }
+    // 故障原因
+    if (data.faultReason) {
+      var fr = document.getElementById('wm_fault_reason');
+      if (fr) fr.value = data.faultReason;
+    }
+    // 备注
+    if (data.remark) {
+      var rm = document.getElementById('wm_remark');
+      if (rm) rm.value = data.remark;
+    }
+  }, delay || 300);
+}
+
+function setGpsData(lat, lng, acc){
+  applyGpsCoords(lat, lng, acc);
+}
+
+function fetchAddress(lat, lng, callback, coordType){
+  // coordType: 'wgs84'|'gcj02'，默认 gcj02
+  var ct = coordType || 'gcj02';
+  var url = API_BASE + '/api/geocode?lat=' + lat + '&lng=' + lng + '&coord_type=' + ct;
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.success && d.address){
+        callback(d.address);
+      } else {
+        callback(null);
+      }
+    })
+    .catch(function(){
+      callback(null);
+    });
+}
+
+function updateGpsStatus(state, text){
+  var dot = document.getElementById('gpsDot');
+  var txt = document.getElementById('gpsText');
+  var action = document.getElementById('gpsBarAction');
+  var bar = document.getElementById('gpsBar');
+  if (bar) bar.classList.add('show');
+  dot.className = 'gps-dot';
+  if (state === 'ready') dot.classList.add('ready');
+  if (state === 'error') dot.classList.add('error');
+  txt.textContent = text;
+  if (action) action.style.display = (state === 'ready') ? 'none' : '';
+}
+
+// ==================== GPS 定位请求（需 HTTPS 安全上下文）====================
+var _gpsWatchId = null;
+
+function isGpsSecureContext() {
+  return !!(window.isSecureContext || location.protocol === 'https:' ||
+    location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+}
+
+function getGpsAccessUrl() {
+  if (location.protocol === 'https:') return location.origin;
+  return 'https://temptw.cosmicps.com';
+}
+
+function stopGPS() {
+  if (_gpsWatchId != null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(_gpsWatchId);
+    _gpsWatchId = null;
+  }
+}
+
+function getGeolocationErrorMessage(err) {
+  if (!isGpsSecureContext()) {
+    return '定位需要 HTTPS，请用 ' + getGpsAccessUrl() + ' 访问';
+  }
+  if (!err) return '定位失败';
+  if (err.code === 1) return '定位权限被拒绝';
+  if (err.code === 2) return '无法获取位置，请开启手机 GPS';
+  if (err.code === 3) return '定位超时，请到空旷处重试';
+  return err.message || '定位失败';
+}
+
+function startGeolocation() {
+  if (!navigator.geolocation) {
+    updateGpsStatus('error', '浏览器不支持定位');
+    return;
+  }
+  if (!isGpsSecureContext()) {
+    updateGpsStatus('error', '需要 HTTPS 才能定位');
+    if (typeof showToast === 'function') showToast('请使用 HTTPS 地址访问以启用定位');
+    return;
+  }
+  updateGpsStatus('loading', '正在获取GPS...');
+  var opts = { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 };
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      applyGpsCoords(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy || 0);
+    },
+    function(err) {
+      updateGpsStatus('error', getGeolocationErrorMessage(err));
+      if (err && err.code === 1 && typeof showToast === 'function') {
+        showToast('定位权限被拒绝，请在系统设置中允许');
+      }
+    },
+    opts
+  );
+  stopGPS();
+  _gpsWatchId = navigator.geolocation.watchPosition(
+    function(pos) {
+      applyGpsCoords(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy || 0);
+    },
+    function() {},
+    opts
+  );
+}
+
+function requestGps() {
+  if (!isGpsSecureContext()) {
+    updateGpsStatus('error', '需要 HTTPS');
+    if (typeof showToast === 'function') showToast('请使用 HTTPS 地址访问以启用定位');
+    return;
+  }
+  startGeolocation();
+}
+
+function refreshGPS() {
+  if (!isGpsSecureContext()) {
+    if (typeof showToast === 'function') showToast('请使用 HTTPS 地址访问以启用定位');
+    return;
+  }
+  wmState.gps.lat = 0;
+  wmState.gps.lng = 0;
+  wmState.gps.acc = 0;
+  wmState.gps.useLat = 0;
+  wmState.gps.useLng = 0;
+  var loc = document.getElementById('wm_location');
+  if (loc) loc.value = '';
+  var hint = document.getElementById('wmGpsHint');
+  if (hint) hint.textContent = '等待GPS定位...';
+  startGeolocation();
+}
+
+
+
+
+// ==================== 水印设置面板 ====================
+function toggleWmConfig(){
+  var body = document.getElementById('wmConfigBody');
+  var arrow = document.getElementById('wmConfigArrow');
+  if (!body || !arrow) return;
+  var isOpen = body.classList.contains('open');
+  if (isOpen) {
+    body.classList.remove('open');
+    arrow.classList.remove('open');
+  } else {
+    body.classList.add('open');
+    arrow.classList.add('open');
+  }
+}
+
+function getExtraLabelMap() {
+  var map = {};
+  if (typeof BUILD_EXTRA_FIELDS === 'undefined') return map;
+  Object.keys(BUILD_EXTRA_FIELDS).forEach(function(build) {
+    (BUILD_EXTRA_FIELDS[build] || []).forEach(function(f) {
+      if (f.key) map[f.key] = f.label || f.key;
+    });
+  });
+  return map;
+}
+
+// ==================== Canvas 水印渲染 ====================
+function renderWatermark(imageFile, callback){
+  var loading = document.getElementById('wmLoading');
+  var loadingText = document.getElementById('wmLoadingText');
+  loading.classList.add('show');
+  loadingText.textContent = '渲染水印...';
+
+  var canvas = document.getElementById('wmCanvas');
+  var ctx = canvas.getContext('2d');
+  var extraLabelMap = getExtraLabelMap();
+
+  function finishRender() {
+    loading.classList.remove('show');
+  }
+
+  var img = new Image();
+  img.onload = function(){
+    try {
+    // Canvas 尺寸：保持图片比例，最大宽度 1200px（保证清晰度）
+    var maxW = 1200;
+    var scale = Math.min(1, maxW / img.width);
+    var w = Math.round(img.width * scale);
+    var h = Math.round(img.height * scale);
+    canvas.width = w;
+    canvas.height = h;
+
+    // 1. 绘制原图
+    ctx.drawImage(img, 0, 0, w, h);
+
+    // === 数据读取（提前，用于判断设备离线检查）===
+    var now = new Date();
+    var timeStr = pad0(now.getHours()) + ':' + pad0(now.getMinutes());
+    var dateStr = now.getFullYear() + '.' + pad0(now.getMonth()+1) + '.' + pad0(now.getDate());
+    var buildStr = document.getElementById('wm_build').value || '';
+
+    // === 设备离线检查：极简水印（仅左下角时间）===
+    if (buildStr === '设备离线检查') {
+      var miniFont = Math.max(10, Math.round(h / 80));
+      var pad = Math.round(w * 0.02);
+      var cx = pad;
+
+      ctx.font = miniFont + 'px -apple-system, "Microsoft YaHei", sans-serif';
+      ctx.textBaseline = 'bottom';
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 2;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText(timeStr, cx, h - pad);
+
+    } else {
+      // === 正常模式：完整水印面板（行距加大、高度随内容自适应）===
+
+      var leftMargin = Math.round(w * 0.03);
+      var panelW = Math.round(w * 0.46);
+      var panelX = leftMargin;
+      var innerM = Math.round(w * 0.02);
+      var cx = panelX + innerM;
+      var cw = panelW - innerM * 2;
+
+      var labelFontSize = Math.max(11, Math.round(w / 40));
+      var valueFontSize = labelFontSize;
+      var minRowH = Math.round(labelFontSize * 1.75);
+      var rowGap = Math.round(labelFontSize * 0.42);
+
+      var locStr = document.getElementById('wm_location').value || '等待GPS定位...';
+      var projectStr = (document.getElementById('wm_project') && document.getElementById('wm_project').value) || '';
+      var pointStr = document.getElementById('wm_point').value || '';
+      var personStr = document.getElementById('wm_person').value || '';
+      var lng = wmState.gps.useLng || parseFloat(document.getElementById('wm_lng').value) || 0;
+      var lat = wmState.gps.useLat || parseFloat(document.getElementById('wm_lat').value) || 0;
+
+      var rows = [{ label: '项目分类', value: projectStr || '未选择' }];
+      var extraData = getExtraFieldsData();
+      Object.keys(extraData).forEach(function(ek) {
+        var ev = extraData[ek];
+        if (ev) rows.push({ label: extraLabelMap[ek] || ek, value: ev });
+      });
+      rows.push({ label: '责任人', value: personStr || '未填写' });
+      rows.push({ label: '安装点位', value: pointStr || '未填写' });
+      rows.push({ label: '施工内容', value: buildStr || '未填写' });
+      rows.push({ label: '拍摄时间', value: dateStr + ' ' + timeStr });
+      rows.push({
+        label: 'GPS 坐标',
+        value: (lng && lat)
+          ? (Math.abs(lat).toFixed(6) + (lat >= 0 ? 'N' : 'S') + ' ' + Math.abs(lng).toFixed(6) + (lng >= 0 ? 'E' : 'W'))
+          : (locStr || '--')
+      });
+      rows.push({ label: '地点', value: locStr });
+
+      var logoBlockH = 0;
+      var padTop = Math.round(labelFontSize * 0.85);
+      var padBottom = Math.round(labelFontSize * 0.85);
+      var rowsBlockH = rows.length * minRowH + Math.max(0, rows.length - 1) * rowGap;
+      var contentH = padTop + logoBlockH + rowsBlockH + padBottom;
+      var wmH = Math.min(Math.round(h * 0.42), Math.max(Math.round(h * 0.24), contentH));
+      var wmTop = h - wmH;
+
+      var panelR = Math.round(w * 0.008);
+      ctx.save();
+      var grad = ctx.createLinearGradient(panelX, wmTop, panelX, wmTop + wmH);
+      grad.addColorStop(0, 'rgba(0,0,0,0.18)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.38)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(panelX + panelR, wmTop);
+      ctx.lineTo(panelX + panelW - panelR, wmTop);
+      ctx.quadraticCurveTo(panelX + panelW, wmTop, panelX + panelW, wmTop + panelR);
+      ctx.lineTo(panelX + panelW, wmTop + wmH - panelR);
+      ctx.quadraticCurveTo(panelX + panelW, wmTop + wmH, panelX + panelW - panelR, wmTop + wmH);
+      ctx.lineTo(panelX + panelR, wmTop + wmH);
+      ctx.quadraticCurveTo(panelX, wmTop + wmH, panelX, wmTop + wmH - panelR);
+      ctx.lineTo(panelX, wmTop + panelR);
+      ctx.quadraticCurveTo(panelX, wmTop, panelX + panelR, wmTop);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      var curY = wmTop + padTop;
+
+      var lw = Math.round(cw * 0.28);
+      var vx = cx + lw + Math.round(labelFontSize * 0.3);
+      var mvw = cw - lw - Math.round(labelFontSize * 0.5);
+      ctx.textBaseline = 'middle';
+
+      for (var i = 0; i < rows.length; i++) {
+        var ry = curY + minRowH / 2;
+        ctx.font = labelFontSize + 'px -apple-system, "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.62)';
+        ctx.fillText(rows[i].label + '：', cx, ry);
+        ctx.font = '600 ' + valueFontSize + 'px -apple-system, "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.96)';
+        var vt = rows[i].value;
+        var vw = ctx.measureText(vt).width;
+        while (vw > mvw && vt.length > 1) {
+          vt = vt.slice(0, -1);
+          vw = ctx.measureText(vt + '...').width;
+        }
+        if (vt !== rows[i].value) vt += '...';
+        ctx.fillText(vt, vx, ry);
+        curY += minRowH + rowGap;
+      }
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    // 右上角扫码导航（有 GPS 坐标时）
+    var navLat = wmState.gps.useLat || parseFloat(document.getElementById('wm_lat').value) || 0;
+    var navLng = wmState.gps.useLng || parseFloat(document.getElementById('wm_lng').value) || 0;
+    var navName = (document.getElementById('wm_point').value || document.getElementById('wm_location').value || '拍摄位置').trim();
+    if (typeof drawNavQrWatermark === 'function' && navLat && navLng) {
+      try {
+        drawNavQrWatermark(ctx, w, h, navLat, navLng, navName, buildStr === '设备离线检查');
+      } catch (qrErr) {
+        console.warn('导航二维码绘制失败', qrErr);
+      }
+    }
+
+    // 显示
+    ctx.shadowBlur = 0;
+    canvas.classList.add('show');
+    document.getElementById('wmPlaceholder').style.display = 'none';
+    document.getElementById('wmActionRow').classList.add('show');
+
+    // 根据施工内容更新操作按钮
+    var buildVal = document.getElementById('wm_build').value;
+    var actionRow = document.getElementById('wmActionRow');
+    if (buildVal === '故障处理' || buildVal === '设备离线检查') {
+      actionRow.innerHTML =
+        '<button class="btn btn-submit" onclick="uploadWmPhoto()">📤 上传照片</button>' +
+        '<button class="btn btn-reset" onclick="resetWatermark()">🔄 重拍</button>';
+    } else if (buildVal === '安全检查') {
+      actionRow.innerHTML =
+        '<button class="btn btn-submit" onclick="uploadWmPhoto()" style="background:linear-gradient(135deg,#2e7d32,#1b5e20)">🔍 安全检测</button>' +
+        '<button class="btn btn-reset" onclick="resetWatermark()">🔄 重拍</button>';
+    } else {
+      actionRow.innerHTML =
+        '<button class="btn btn-submit" onclick="uploadWmPhoto()" style="flex:2">📤 提交</button>' +
+        '<button class="btn btn-download" onclick="downloadWatermark()">💾 保存</button>' +
+        '<button class="btn btn-reset" onclick="resetWatermark()">🔄 重拍</button>';
+    }
+
+    wmState.watermarked = canvas.toDataURL('image/jpeg', 0.85);
+    saveWmFields();
+    if (callback) callback(wmState.watermarked);
+    } catch (err) {
+      console.error('水印渲染失败', err);
+      showToast('❌ 水印渲染失败，请重拍');
+    } finally {
+      finishRender();
+    }
+  };
+
+  img.onerror = function(){
+    finishRender();
+    showToast('❌ 图片加载失败');
+  };
+
+  img.src = URL.createObjectURL(imageFile);
+}
+
+function pad0(n){ return n < 10 ? '0' + n : '' + n; }
+
+// 照片压缩：目标不超过 1MB
+var MAX_PHOTO_BYTES = 1024 * 1024;
+
+function compressPhotoDataUrl(dataUrl, maxBytes, callback) {
+  maxBytes = maxBytes || MAX_PHOTO_BYTES;
+  if (!dataUrl) { callback(dataUrl, 0); return; }
+  var img = new Image();
+  img.onload = function() {
+    var canvas = document.createElement('canvas');
+    var scale = 1.0;
+    var quality = 0.88;
+    function tryEncode() {
+      var w = Math.max(1, Math.round(img.width * scale));
+      var h = Math.max(1, Math.round(img.height * scale));
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      var out = canvas.toDataURL('image/jpeg', quality);
+      var b64 = out.indexOf(',') >= 0 ? out.split(',')[1] : out;
+      var size = Math.ceil(b64.length * 3 / 4);
+      if (size <= maxBytes || (quality <= 0.5 && scale <= 0.35)) {
+        callback(out, size);
+        return;
+      }
+      if (quality > 0.52) quality -= 0.07;
+      else { scale -= 0.08; quality = 0.82; }
+      tryEncode();
+    }
+    tryEncode();
+  };
+  img.onerror = function() { callback(dataUrl, 0); };
+  img.src = dataUrl;
+}
+
+function sendPhotoUpload(payload, onSuccess) {
+  fetch(API_BASE + '/api/mobile-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (getToken() || '') },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r){ return r.json(); })
+  .then(onSuccess)
+  .catch(function(){
+    showToast('❌ 上传失败，请检查网络');
+  });
+}
+
+// ==================== 拍照/相册（根据模式分发） ====================
+function openCamera(){
+  if (!validateWmFieldsBeforeCapture()) return;
+  var inp = document.getElementById('fileInput');
+  inp.setAttribute('capture', 'environment');
+  inp.click();
+}
+
+function openGallery(){
+  if (!validateWmFieldsBeforeCapture()) return;
+  var inp = document.getElementById('fileInput');
+  inp.removeAttribute('capture');
+  inp.click();
+}
+
+function handleFile(input){
+  var file = input.files[0];
+  if (!file) return;
+  input.value = ''; // 允许重复选择
+
+  handleWatermarkFile(file);
+}
+
+// ==================== 水印模式：拍照 → 渲染水印 ====================
+function handleWatermarkFile(file){
+  if (!validateWmFieldsBeforeCapture()) return;
+  wmState.image = file;
+
+  // 自动填入时间
+  var now = new Date();
+  var ts = now.getFullYear() + '-' + pad0(now.getMonth()+1) + '-' + pad0(now.getDate()) +
+            ' ' + pad0(now.getHours()) + ':' + pad0(now.getMinutes()) + ':' + pad0(now.getSeconds());
+
+  // 如果地点和GPS为空，尝试重新获取（超时后仍继续渲染）
+  if (!wmState.gps.lat && navigator.geolocation){
+    showToast('📍 正在获取GPS...');
+    var gpsDone = false;
+    function goRender() {
+      if (gpsDone) return;
+      gpsDone = true;
+      renderWatermark(file);
+    }
+    setTimeout(goRender, 9000);
+    navigator.geolocation.getCurrentPosition(
+      function(pos){
+        setGpsData(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+        goRender();
+      },
+      function(){
+        showToast('⚠️ GPS不可用，继续渲染水印');
+        goRender();
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
+  } else {
+    renderWatermark(file);
+  }
+}
+
+function downloadWatermark(){
+  if (!wmState.watermarked){
+    showToast('⚠️ 请先拍摄照片');
+    return;
+  }
+
+  // 生成文件名: 天网_站点_时间.jpg
+  var loc = (document.getElementById('wm_location').value || 'site').replace(/[\\/:*?"<>|]/g, '_');
+  var now = new Date();
+  var ts = now.getFullYear() + pad0(now.getMonth()+1) + pad0(now.getDate()) + '_' + pad0(now.getHours()) + pad0(now.getMinutes());
+  var filename = '天网_' + loc.substring(0, 20) + '_' + ts + '.jpg';
+
+  // 下载方式：创建链接点击
+  var link = document.createElement('a');
+  link.download = filename;
+  link.href = wmState.watermarked;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast('✅ 照片已保存: ' + filename);
+  logAudit('下载照片', '下载水印照片 - ' + filename);
+}
+
+function watermarkToOCR(){
+  if (!wmState.watermarked){
+    showToast('⚠️ 请先拍摄照片');
+    return;
+  }
+
+  var buildVal = document.getElementById('wm_build').value;
+  if (buildVal === '故障处理' || buildVal === '设备离线检查') {
+    showToast('⚠️ 此施工内容不支持提交识别，请使用上传功能');
+    return;
+  }
+
+  // 将 watermarked dataURL 转成 Blob，上传到 OCR 服务
+  var parts = wmState.watermarked.split(',');
+  var mime = parts[0].match(/:(.*?);/)[1];
+  var binary = atob(parts[1]);
+  var arr = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++){ arr[i] = binary.charCodeAt(i); }
+  var blob = new Blob([arr], { type: mime });
+
+  // 切换到 OCR 视图并触发识别
+  switchTab('ocr');
+  ocrState.currentFile = blob;
+  doOCR(blob);
+
+  // 水印数据预填到 OCR 结果
+  prefillOcrFromWatermark();
+}
+
+function prefillOcrFromWatermark(){
+  window._wmPrefill = {
+    name: document.getElementById('wm_location').value,
+    area: document.getElementById('wm_location').value,
+    longitude: document.getElementById('wm_lng').value,
+    latitude: document.getElementById('wm_lat').value,
+    point: document.getElementById('wm_point').value,
+    person: document.getElementById('wm_person').value,
+    build: document.getElementById('wm_build').value,
+    remark: document.getElementById('wm_remark').value
+  };
+}
+
+function applyWmPrefill(){
+  if (!window._wmPrefill) return;
+  var pf = window._wmPrefill;
+  var map = {name:'name', area:'area', point:'point', person:'person', remark:'remark'};
+  for (var k in map){
+    var el = document.getElementById('ocr_' + map[k]);
+    if (el && pf[k] && (!el.value || el.value === '')){
+      el.value = pf[k];
+    }
+  }
+  // 经纬度同步
+  var lngEl = document.getElementById('ocr_longitude');
+  var latEl = document.getElementById('ocr_latitude');
+  if (lngEl && !lngEl.value && pf.longitude) lngEl.value = pf.longitude;
+  if (latEl && !latEl.value && pf.latitude) latEl.value = pf.latitude;
+  window._wmPrefill = null;
+}
+
+function resetWatermark(){
+  wmState.image = null;
+  wmState.watermarked = null;
+  var canvas = document.getElementById('wmCanvas');
+  canvas.classList.remove('show');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('wmPlaceholder').style.display = '';
+  document.getElementById('wmActionRow').classList.remove('show');
+}
+
+function uploadWmPhoto(){
+  if (!wmState.watermarked){
+    showToast('⚠️ 请先拍摄照片');
+    return;
+  }
+  if (!validateWmFieldsBeforeCapture()) return;
+
+  var project = document.getElementById('wm_project').value || '';
+  var point = document.getElementById('wm_point').value || '';
+  var person = document.getElementById('wm_person').value || getWorkerName() || '';
+  var build = document.getElementById('wm_build').value || '';
+  var remark = document.getElementById('wm_remark').value || '';
+  var faultReason = document.getElementById('wm_fault_reason').value || '';
+
+  showToast('📤 上传中...');
+
+  compressPhotoDataUrl(wmState.watermarked, MAX_PHOTO_BYTES, function(compressedDataUrl, size) {
+    if (size > MAX_PHOTO_BYTES) {
+      showToast('⚠️ 图片过大，请重拍或换一张较小的照片');
+      return;
+    }
+    var b64 = compressedDataUrl.indexOf(',') >= 0 ? compressedDataUrl.split(',')[1] : compressedDataUrl;
+    var payload = {
+      project: project,
+      point: point,
+      person: person,
+      build: build,
+      remark: remark,
+      fault_reason: faultReason,
+      photo: b64,
+      lng: document.getElementById('wm_lng').value || '',
+      lat: document.getElementById('wm_lat').value || '',
+      area: document.getElementById('wm_location').value || '',
+      extraFields: getExtraFieldsData()
+    };
+    sendPhotoUpload(payload, function(data){
+      if (data.success || data.ok) {
+        saveWmFields();
+        var compressed = data.data && data.data.compress && data.data.compress.compressed;
+        var sizeKb = Math.round(((data.data && data.data.size) || size) / 1024);
+        if (build === '安全检查') {
+          showSafetyResult(data);
+          logAudit(build, build + ' - ' + (point || '(无站点名)') + ' - ' + (data.passed ? '通过' : '未通过'));
+        } else if (build === '设备离线检查') {
+          showOfflineCheckResult(data);
+          logAudit(build, build + '拍照上传 - 匹配' + (data.matched_devices ? data.matched_devices.length : 0) + '台离线设备');
+        } else if (build === '故障处理') {
+          showToast(compressed ? ('✅ 已压缩上传 (' + sizeKb + 'KB)') : '✅ 照片上传成功');
+          logAudit(build, build + '拍照上传 - ' + (point || '(无站点名)'));
+          resetWatermark();
+          autoCompleteFaultReport(person, wmState.watermarked, point);
+        } else {
+          var siteInfo = data.data && data.data.site;
+          var progressMsg = siteInfo
+            ? (' · 站点进度 ' + siteInfo.photoCount + '/' + siteInfo.requiredCount)
+            : '';
+          showToast((compressed ? ('✅ 已压缩上传 (' + sizeKb + 'KB)') : '✅ 照片上传成功') + progressMsg);
+          logAudit(build, build + '拍照上传 - ' + (point || '(无站点名)'));
+          resetWatermark();
+        }
+      } else {
+        showToast('❌ 上传失败: ' + (data.message || data.error || '未知错误'));
+      }
+    });
+  });
+}
+
+// ==================== 安全检查结果展示 ====================
+function showSafetyResult(data){
+  var html = '<div style="padding:16px;max-height:70vh;overflow-y:auto">';
+  html += '<h3 style="margin-bottom:12px;font-size:16px">🔍 安全检测结果</h3>';
+
+  // 工作环境标签
+  var envLabel = WORK_ENV_LABEL[data.work_env] || data.work_env || '常规环境';
+  var envDesc = {
+    '带电环境': '检测项：安全帽、反光衣、绝缘手套、胶底鞋',
+    '封闭环境': '检测项：安全帽、反光衣、口罩',
+    '常规环境': '检测项：安全帽、反光衣'
+  };
+  html += '<div style="background:#e3f2fd;color:#1565c0;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px">';
+  html += '🏷️ 工作环境：<b>' + envLabel + '</b> · ' + (envDesc[envLabel] || '') + '</div>';
+
+  // 合规状态
+  var passed = data.passed;
+  var statusColor = passed === true ? '#2e7d32' : (passed === false ? '#c62828' : '#f57c00');
+  var statusText = passed === true ? '✅ 合规' : (passed === false ? '❌ 不合规' : '⚠️ 未检测到人员');
+  html += '<div style="background:' + statusColor + ';color:#fff;padding:10px 14px;border-radius:10px;font-size:15px;font-weight:700;margin-bottom:12px">' + statusText + '</div>';
+
+  // 检测人数
+  html += '<p style="font-size:13px;color:#555;margin-bottom:8px">检测到 <b>' + (data.person_count || 0) + '</b> 人</p>';
+
+  // 合规详情
+  var comp = data.compliance || {};
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">';
+  var labelMap = {'helmet':'安全帽','vest':'反光衣','mask':'口罩','gloves':'绝缘手套','shoes':'胶底鞋'};
+  for (var key in comp) {
+    var ok = comp[key];
+    var badgeColor = ok === true ? '#e8f5e9;color:#2e7d32' : (ok === false ? '#ffebee;color:#c62828' : '#fff3e0;color:#e65100');
+    var badgeText = ok === true ? '✓ ' + (labelMap[key]||key) : (ok === false ? '✗ ' + (labelMap[key]||key) : '? ' + (labelMap[key]||key));
+    html += '<span style="background:' + badgeColor + ';padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600">' + badgeText + '</span>';
+  }
+  html += '</div>';
+
+  // 模型暂不支持的检测项提示
+  var unsupported = data.unsupported || [];
+  if (unsupported.length > 0) {
+    html += '<div style="background:#fff8e1;border:1px solid #ffcc80;padding:8px 12px;border-radius:8px;font-size:12px;color:#e65100;margin-bottom:10px">';
+    html += '⚠️ <b>以下检测项当前模型暂不支持，需人工确认：</b><br>';
+    for (var u = 0; u < unsupported.length; u++) {
+      html += '· ' + unsupported[u].label + '：' + unsupported[u].reason + '<br>';
+    }
+    html += '</div>';
+  }
+
+  // 标注图片
+  if (data.annotated_image) {
+    html += '<img src="' + data.annotated_image + '" style="width:100%;border-radius:10px;border:1px solid #e0e0e0">';
+  }
+
+  // 检测详情
+  var dets = data.detections || [];
+  if (dets.length > 0) {
+    html += '<h4 style="margin:12px 0 6px;font-size:14px">检测详情</h4>';
+    html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';
+    html += '<tr style="background:#f5f5f5"><th style="padding:6px;text-align:left">类别</th><th style="padding:6px;text-align:left">置信度</th></tr>';
+    for (var i = 0; i < dets.length; i++) {
+      var det = dets[i];
+      var clsColor = det.class.startsWith('NO-') ? '#c62828' : '#2e7d32';
+      html += '<tr style="border-bottom:1px solid #eee">';
+      html += '<td style="padding:6px;color:' + clsColor + '">' + (det.class_cn || det.class) + '</td>';
+      html += '<td style="padding:6px">' + Math.round((det.confidence || 0) * 100) + '%</td>';
+      html += '</tr>';
+    }
+    html += '</table>';
+  }
+
+  html += '</div>';
+
+  // 显示模态框
+  var modal = document.getElementById('ocrModal');
+  var body = document.getElementById('ocrModalBody');
+  if (modal && body) {
+    body.innerHTML = html;
+    modal.classList.add('show');
+  } else {
+    // 回退：用 alert 风格
+    showToast(statusText + ' | 人员:' + (data.person_count||0));
+  }
+}
+
+// ==================== 设备离线检查结果展示 ====================
+function showOfflineCheckResult(data){
+  var matched = data.matched_devices || [];
+  var html = '<div style="padding:16px;max-height:70vh;overflow-y:auto">';
+  html += '<h3 style="margin-bottom:12px;font-size:16px">📡 设备离线检查结果</h3>';
+
+  var autoOrders = data.auto_orders || [];
+  if (matched.length > 0) {
+    html += '<div style="background:#e8f5e9;color:#2e7d32;padding:10px 14px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:8px">✅ 已标记 ' + matched.length + ' 台设备为离线</div>';
+    if (autoOrders.length > 0) {
+      html += '<div style="background:#e3f2fd;color:#1565c0;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px">🤖 自动派单 ' + autoOrders.length + ' 条：' + autoOrders.join('、') + '</div>';
+    }
+    html += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px">';
+    html += '<tr style="background:#f5f5f5"><th style="padding:6px;text-align:left">设备名称</th><th style="padding:6px;text-align:left">IP地址</th><th style="padding:6px;text-align:left">项目</th><th style="padding:6px;text-align:left">工单</th></tr>';
+    for (var i = 0; i < matched.length; i++) {
+      var dev = matched[i];
+      var orderCell;
+      if (dev.order_id) {
+        orderCell = '<span style="color:#1565c0;font-size:10px">' + dev.order_id + '</span>';
+      } else if (dev.order_skipped) {
+        orderCell = '<span style="color:#888;font-size:10px">已有工单</span>';
+      } else {
+        orderCell = '<span style="color:#aaa;font-size:10px">-</span>';
+      }
+      html += '<tr style="border-bottom:1px solid #eee">';
+      html += '<td style="padding:6px;font-size:11px">' + (dev.name || '?') + '</td>';
+      html += '<td style="padding:6px;color:#c62828;font-weight:600">' + (dev.device_ip || '') + '</td>';
+      html += '<td style="padding:6px;font-size:11px">' + (dev.fenju || '') + '</td>';
+      html += '<td style="padding:6px">' + orderCell + '</td>';
+      html += '</tr>';
+    }
+    html += '</table>';
+  } else {
+    html += '<div style="background:#fff3e0;color:#e65100;padding:10px 14px;border-radius:10px;font-size:14px;margin-bottom:12px">⚠️ 未在照片中识别到 IP 地址，或 IP 未匹配平台点位</div>';
+    html += '<p style="font-size:12px;color:#888;margin-bottom:12px">请在点位管理中核对手动标记离线</p>';
+  }
+
+  // ===== 方案A：自动恢复展示 =====
+  var recovered = data.recovered_devices || [];
+  var closedOrders = data.auto_closed_orders || [];
+  if (recovered.length > 0) {
+    html += '<div style="background:#e8f5e9;color:#1b5e20;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;margin-bottom:8px">✅ 本批次未出现，已自动恢复 ' + recovered.length + ' 台设备为在线</div>';
+    if (closedOrders.length > 0) {
+      html += '<div style="background:#f3e5f5;color:#6a1b9a;padding:8px 12px;border-radius:8px;font-size:11px;margin-bottom:10px">🔒 自动关闭工单 ' + closedOrders.length + ' 条：' + closedOrders.join('、') + '</div>';
+    }
+    html += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px">';
+    html += '<tr style="background:#f5f5f5"><th style="padding:6px;text-align:left">设备名称</th><th style="padding:6px;text-align:left">IP地址</th><th style="padding:6px;text-align:left">项目</th></tr>';
+    for (var j = 0; j < recovered.length; j++) {
+      var rv = recovered[j];
+      html += '<tr style="border-bottom:1px solid #eee">';
+      html += '<td style="padding:6px;font-size:11px">' + (rv.name || '?') + '</td>';
+      html += '<td style="padding:6px;color:#2e7d32;font-weight:600">' + (rv.device_ip || '') + '</td>';
+      html += '<td style="padding:6px;font-size:11px">' + (rv.fenju || '') + '</td>';
+      html += '</tr>';
+    }
+    html += '</table>';
+  }
+
+  // 关闭按钮
+  html += '<button onclick="closeOfflineCheckResult()" style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600">关闭</button>';
+  html += '</div>';
+
+  var modal = document.getElementById('ocrModal');
+  var body = document.getElementById('ocrModalBody');
+  if (modal && body) {
+    body.innerHTML = html;
+    modal.classList.add('show');
+  } else {
+    var recMsg = recovered.length > 0 ? ('，恢复 ' + recovered.length + ' 台') : '';
+    showToast('已标记 ' + matched.length + ' 台设备为离线' + recMsg);
+  }
+  resetWatermark();
+}
+
+function closeOfflineCheckResult(){
+  var modal = document.getElementById('ocrModal');
+  if (modal) { modal.classList.remove('show'); }
+}
+
+// ==================== 施工内容子项管理（配置见 build_config.js） ====================
+var WORK_ENV_MAP = {'常规环境':'normal', '带电环境':'electrical', '封闭环境':'confined'};
+var WORK_ENV_LABEL = {'normal':'常规环境', 'electrical':'带电环境', 'confined':'封闭环境'};
+
+function onBuildChange(){
+  var build = document.getElementById('wm_build').value;
+  var extras = document.getElementById('buildExtras');
+  if (!extras) return;
+
+  var fields = (typeof BUILD_EXTRA_FIELDS !== 'undefined' ? BUILD_EXTRA_FIELDS[build] : null) || [];
+  if (fields.length === 0) { extras.style.display = 'none'; extras.innerHTML = ''; return; }
+
+  extras.style.display = '';
+  var html = '<div style="margin-top:6px;padding:8px;background:var(--bg2, #f8f9fa);border-radius:8px;border:1px solid var(--border, #e0e0e0)">';
+  html += '<div style="font-size:12px;color:var(--text2,#888);margin-bottom:6px">📋 施工子项</div>';
+
+  for (var i = 0; i < fields.length; i++){
+    var f = fields[i];
+    var reqStar = f.required ? '<span style="color:#f44336">* </span>' : '';
+    if (f.type === 'select'){
+      html += '<div style="margin-bottom:6px"><label style="display:block;font-size:12px;color:var(--text2,#666);margin-bottom:2px">' + reqStar + f.label + '</label>';
+      html += '<select class="wm-extra-field" id="extra_' + f.key + '" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;appearance:auto;-webkit-appearance:auto;background:#fff">';
+      html += '<option value="">-- 请选择 --</option>';
+      for (var j = 0; j < f.options.length; j++){
+        html += '<option>' + f.options[j] + '</option>';
+      }
+      html += '</select></div>';
+    } else {
+      var ph = f.placeholder || (f.required ? '必填' : '选填');
+      html += '<div style="margin-bottom:6px"><label style="display:block;font-size:12px;color:var(--text2,#666);margin-bottom:2px">' + reqStar + f.label + '</label>';
+      html += '<input class="wm-extra-field" id="extra_' + f.key + '" placeholder="' + ph + '" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></div>';
+    }
+  }
+
+  html += '</div>';
+  extras.innerHTML = html;
+}
+
+function getExtraFieldsData(){
+  var build = document.getElementById('wm_build').value;
+  var fields = (typeof BUILD_EXTRA_FIELDS !== 'undefined' ? BUILD_EXTRA_FIELDS[build] : null) || [];
+  var data = {};
+  for (var i = 0; i < fields.length; i++){
+    var el = document.getElementById('extra_' + fields[i].key);
+    if (el) data[fields[i].key] = el.value.trim();
+  }
+  return data;
+}
+
+function validateExtraFields(build) {
+  var fields = (typeof BUILD_EXTRA_FIELDS !== 'undefined' ? BUILD_EXTRA_FIELDS[build] : null) || [];
+  for (var i = 0; i < fields.length; i++) {
+    var f = fields[i];
+    if (!f.required) continue;
+    var el = document.getElementById('extra_' + f.key);
+    var val = el ? String(el.value || '').trim() : '';
+    if (!val) return { ok: false, message: '请填写「' + f.label + '」' };
+  }
+  return { ok: true };
+}
+
+function focusWmField(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var body = document.getElementById('wmConfigBody');
+  var arrow = document.getElementById('wmConfigArrow');
+  if (body && !body.classList.contains('open')) {
+    body.classList.add('open');
+    if (arrow) arrow.classList.add('open');
+  }
+  try {
+    el.focus();
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (e) {}
+}
+
+/** 拍照/相册前：项目、负责人、安装点位等须填完；施工内容选填 */
+function validateWmFieldsBeforeCapture() {
+  var project = (document.getElementById('wm_project') || {}).value || '';
+  var person = (document.getElementById('wm_person') || {}).value || '';
+  var build = (document.getElementById('wm_build') || {}).value || '';
+  var point = ((document.getElementById('wm_point') || {}).value || '').trim();
+  var faultReason = ((document.getElementById('wm_fault_reason') || {}).value || '').trim();
+
+  if (!project) {
+    showToast('⚠️ 请先选择项目分类');
+    focusWmField('wm_project');
+    return false;
+  }
+  if (!person) {
+    showToast('⚠️ 请先登录后再拍照');
+    return false;
+  }
+  if (!build) {
+    showToast('⚠️ 请选择施工阶段');
+    focusWmField('wm_build');
+    return false;
+  }
+  if (build !== '设备离线检查' && build !== '安全检查' && !point) {
+    showToast('⚠️ 请先填写安装点位');
+    focusWmField('wm_point');
+    return false;
+  }
+  if (build === '故障处理' && !faultReason) {
+    showToast('⚠️ 请先填写故障原因');
+    focusWmField('wm_fault_reason');
+    return false;
+  }
+  if (build) {
+    var extraCheck = validateExtraFields(build);
+    if (!extraCheck.ok) {
+      showToast('⚠️ ' + extraCheck.message);
+      var fields = (typeof BUILD_EXTRA_FIELDS !== 'undefined' ? BUILD_EXTRA_FIELDS[build] : null) || [];
+      for (var i = 0; i < fields.length; i++) {
+        if (fields[i].required) {
+          var el = document.getElementById('extra_' + fields[i].key);
+          if (el && !String(el.value || '').trim()) {
+            focusWmField('extra_' + fields[i].key);
+            break;
+          }
+        }
+      }
+      return false;
+    }
+  }
+  return true;
+}
+
+// ==================== OCR 模式：拍照 → AI识别 → 生成点位 ====================
+function handleOcrFile(file){
+  ocrState.currentFile = file;
+
+  // 预览
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = document.getElementById('previewImg');
+    img.src = e.target.result;
+    img.classList.add('show');
+    document.getElementById('ocrPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+
+  doOCR(file);
+}
+
+function showLoading(show, text){
+  var el = document.getElementById('loadingOverlay');
+  if (!el) return;
+  el.classList.toggle('show', !!show);
+  if (text) {
+    var t = document.getElementById('loadingOverlayText');
+    if (t) t.textContent = text;
+  }
+}
+
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+async function doOCR(file){
+  if (!API_BASE){
+    showToast('❌ 请先点击右上角⚙️设置服务器地址');
+    openServerModal();
+    return;
+  }
+  showLoading(true);
+  hideOcrResult();
+
+  var formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    var resp = await fetch(API_BASE + OCR_ENDPOINT, { method: 'POST', body: formData });
+    if (!resp.ok) throw new Error('OCR 服务响应异常');
+    var data = await resp.json();
+    if (!data.success) throw new Error(data.error || '识别失败');
+    ocrState.currentResult = data.data;
+    showOcrResult(data.data);
+    applyWmPrefill();
+    showToast('✅ 识别完成');
+    logAudit('OCR识别', 'OCR照片识别 - ' + (data.data.name || '未知点位'));
+  } catch(err){
+    console.error('OCR Error:', err);
+    showToast('❌ 识别失败: ' + err.message);
+    resetAll();
+  } finally {
+    showLoading(false);
+  }
+}
+
+function showOcrResult(data){
+  var section = document.getElementById('resultSection');
+  var table = document.getElementById('resultTable');
+  var action = document.getElementById('actionRow');
+
+  var fields = [
+    {key:'name', label:'站点名称', required:true},
+    {key:'area', label:'地点', required:true},
+    {key:'longitude', label:'经度', required:true},
+    {key:'latitude', label:'纬度', required:true},
+    {key:'point', label:'安装点位', required:false},
+    {key:'person', label:'负责人', required:false},
+    {key:'build', label:'施工类型', required:false},
+    {key:'cam_type', label:'摄像机类型', required:false},
+    {key:'createTime', label:'拍摄时间', required:false},
+    {key:'remark', label:'备注', required:false}
+  ];
+
+  var html = '';
+  for (var i = 0; i < fields.length; i++){
+    var f = fields[i];
+    var val = data[f.key] || '';
+    html += '<tr><td>' + f.label + (f.required ? '<span style="color:#f44336">*</span>' : '') +
+      '</td><td><input id="ocr_' + f.key + '" value="' + escapeHtml(val) + '" placeholder="请输入' + f.label + '"></td></tr>';
+  }
+  table.innerHTML = html;
+  section.classList.add('show');
+  action.classList.add('show');
+}
+
+function hideOcrResult(){
+  document.getElementById('resultSection').classList.remove('show');
+  document.getElementById('actionRow').classList.remove('show');
+}
+
+function escapeHtml(str){
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ==================== 提交点位 ====================
+function submitPoint(){
+  var name = (document.getElementById('ocr_name') || {}).value || '';
+  var area = (document.getElementById('ocr_area') || {}).value || '';
+  var lng = (document.getElementById('ocr_longitude') || {}).value || '';
+  var lat = (document.getElementById('ocr_latitude') || {}).value || '';
+  var build = (document.getElementById('ocr_build') || {}).value || '';
+
+  name = name.trim(); area = area.trim(); lng = lng.trim(); lat = lat.trim();
+
+  if (!name || !area || !lng || !lat){
+    showToast('⚠️ 请填写站点名称、地点和经纬度');
+    return;
+  }
+
+  // 故障处理/设备离线检查不创建站点
+  if (build === '故障处理' || build === '设备离线检查') {
+    showToast('⚠️ 故障处理和设备离线检查不会创建站点，请使用水印拍照上传');
+    return;
+  }
+
+  var pointData = {
+    name: name,
+    area: area,
+    longitude: parseFloat(lng),
+    latitude: parseFloat(lat),
+    point: (document.getElementById('ocr_point') || {}).value || '',
+    person: getWorkerName() || (document.getElementById('ocr_person') || {}).value || '',
+    build: (document.getElementById('ocr_build') || {}).value || '',
+    cam_type: (document.getElementById('ocr_cam_type') || {}).value || '',
+    createTime: (document.getElementById('ocr_createTime') || {}).value || '',
+    remark: (document.getElementById('ocr_remark') || {}).value || '',
+    source: 'mobile_ocr',
+    ocrTime: new Date().toISOString(),
+    extraFields: getExtraFieldsData()
+  };
+
+  savePoint(pointData);
+  document.getElementById('successMsg').textContent = '站点「' + name + '」已生成，可在管理平台查看';
+  document.getElementById('successModal').classList.add('show');
+}
+
+function savePoint(data){
+  // 故障处理/设备离线检查不创建站点
+  if (data.build === '故障处理' || data.build === '设备离线检查') {
+    console.warn('savePoint 拦截: ' + data.build + ' 不会创建站点');
+    return;
+  }
+  try {
+    var points = JSON.parse(localStorage.getItem('tianwang_points') || '[]');
+    data.id = 'pt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    data.createTime = data.createTime || new Date().toLocaleString('zh-CN');
+    data.status = '在线';
+    // 服务端持久化
+    if (API_BASE) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', API_BASE + '/api/points', false);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify(data));
+    }
+    points.push(data);
+    localStorage.setItem('tianwang_points', JSON.stringify(points));
+    logAudit('新增点位', '手机端新增点位 - ' + (data.name || '未知'));
+  } catch(e){
+    console.error('保存失败:', e);
+  }
+}
+
+// ==================== 审计日志 ====================
+function logAudit(opType, detail, result){
+  result = result || '成功';
+  var person = getWorkerName() ||
+    (document.getElementById('wm_person') && document.getElementById('wm_person').value) || '';
+  if (!person && ocrState && ocrState.currentResult) {
+    person = ocrState.currentResult.person || '';
+  }
+  var entry = {
+    user: person || '施工人员',
+    role: 'mobile',
+    opType: opType,
+    detail: detail,
+    result: result
+  };
+  // 异步提交到服务端
+  if (API_BASE) {
+    fetch(API_BASE + '/api/audit-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    }).catch(function(){ /* 忽略 */ });
+  }
+}
+
+// ==================== 重置 ====================
+function resetAll(){
+  ocrState.currentResult = null;
+  ocrState.currentFile = null;
+  document.getElementById('previewImg').classList.remove('show');
+  document.getElementById('previewImg').src = '';
+  document.getElementById('ocrPlaceholder').style.display = '';
+  hideOcrResult();
+}
+
+// ==================== 弹窗 ====================
+function closeSuccess(){
+  document.getElementById('successModal').classList.remove('show');
+  if (currentMode === 'watermark'){
+    resetWatermark();
+  } else {
+    resetAll();
+  }
+}
+
+// ==================== 服务检查 ====================
+function checkService(){
+  if (!API_BASE){
+    setStatus('off', '未配置服务器 (点击⚙️设置)');
+    return;
+  }
+  setStatus('off', '检查服务...');
+  var url = API_BASE.replace(/\/$/, '') + '/api/ping?_t=' + Date.now();
+  console.log('checkService: trying', url);
+  if (typeof dbg === 'function') dbg('checkService: trying ' + url);
+
+  var did = false;
+  function done(ok, msg){
+    if (did) return;
+    did = true;
+    setStatus(ok ? 'on' : 'off', msg);
+    console.log('checkService:', msg);
+  }
+
+  // 超时：8秒
+  var timer = setTimeout(function(){ done(false, '连接超时 (点击重试)'); }, 8000);
+
+  // 用 XHR（所有浏览器都支持，包括旧手机）
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.timeout = 8000;
+    xhr.onload = function(){
+      clearTimeout(timer);
+      try {
+        var d = JSON.parse(xhr.responseText);
+        if (d && d.status === 'ok') done(true, '服务已连接');
+        else done(false, '服务异常');
+      } catch(e) {
+        done(false, '响应解析失败');
+      }
+    };
+    xhr.onerror = function(){
+      clearTimeout(timer);
+      done(false, '连接失败 (点击重试)');
+    };
+    xhr.ontimeout = function(){
+      clearTimeout(timer);
+      done(false, '连接超时 (点击重试)');
+    };
+    xhr.send();
+  } catch(e) {
+    clearTimeout(timer);
+    done(false, '请求异常:' + (e && e.message || '未知'));
+  }
+}
+
+function setStatus(state, text){
+  var dot = document.getElementById('statusDot');
+  var txt = document.getElementById('statusText');
+  var retry = document.getElementById('statusRetry');
+  var apiBaseSpan = document.getElementById('statusApiBase');
+  if (!dot || !txt) return;
+  dot.className = 'status-dot' + (state === 'off' ? ' off' : '');
+  txt.textContent = text;
+  if (retry) retry.style.display = (state === 'off') ? '' : 'none';
+  // 显示当前 API_BASE 值（方便调试）
+  if (apiBaseSpan) {
+    var display = API_BASE || window.API_BASE || '(空)';
+    if (display.length > 30) display = display.substring(0, 30) + '...';
+    apiBaseSpan.textContent = display;
+    apiBaseSpan.title = API_BASE || window.API_BASE || '(空)';
+  }
+}
+
+// ==================== 服务器配置 ====================
+function openServerModal(){
+  var saved = localStorage.getItem('ocr_server_addr') || '';
+  document.getElementById('serverAddrInput').value = saved;
+  document.getElementById('serverModal').classList.add('show');
+}
+
+function closeServerModal(){
+  document.getElementById('serverModal').classList.remove('show');
+}
+
+function saveServerAddr(){
+  var val = document.getElementById('serverAddrInput').value.trim();
+  if (val){
+    if (!/^https?:\/\//i.test(val)){ val = 'http://' + val; }
+    val = val.replace(/\/$/, '');
+    localStorage.setItem('ocr_server_addr', val);
+    API_BASE = val;
+    window.API_BASE = API_BASE;
+    showToast('✅ 服务器地址已保存: ' + val);
+  } else {
+    localStorage.removeItem('ocr_server_addr');
+    API_BASE = window.location.protocol === 'file:' ? '' : window.location.origin;
+    window.API_BASE = API_BASE;
+    showToast('⚠️ 已清除服务器地址');
+  }
+  closeServerModal();
+  setTimeout(checkService, 300);
+}
+
+// ==================== PWA 安装 ====================
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredPrompt = e;
+  setTimeout(function(){
+    if (deferredPrompt) showToast('💡 点击右上角菜单→添加到主屏幕');
+  }, 3000);
+});
+</script>
+
+</div><!-- /appContent -->
+
+<script src="qrcode.min.js?v=1"></script>
+<script src="nav_qrcode.js?v=1"></script>
+<script src="build_config.js?v=20260628g"></script>
+<script src="worker_filter.js?v=20260628g"></script>
+<script>
+// ===================== 登录 =====================
+var APP_SESSION = null; // { token, username, displayName, role, group, workerName, workerId, workerRole }
+
+function getToken() { return APP_SESSION ? APP_SESSION.token : null; }
+function getWorkerName() { return APP_SESSION ? APP_SESSION.workerName : ''; }
+
+// 负责人自动同步为当前登录账号
+function lockPersonSelect() {
+  var hidden = document.getElementById('wm_person');
+  var display = document.getElementById('wm_person_display');
+  if (!hidden) return;
+  var name = getWorkerName() || (APP_SESSION && (APP_SESSION.displayName || APP_SESSION.username)) || '';
+  hidden.value = name;
+  if (display) display.value = name ? ('👤 ' + name + '（当前账号）') : '👤 请先登录';
+  if (name && typeof resetBuildOptions === 'function') resetBuildOptions('all');
+}
+
+function isWorkerLinkedAccount() {
+  return !!(APP_SESSION && APP_SESSION.group && String(APP_SESSION.group).indexOf('worker:') === 0);
+}
+
+function isTeamLeaderAccount() {
+  return !!(APP_SESSION && APP_SESSION.workerRole === 'team_leader');
+}
+
+function canDispatchOrders() {
+  if (!APP_SESSION) return false;
+  if (isWorkerLinkedAccount()) return false;
+  return isOrderAdminRole(APP_SESSION.role);
+}
+
+function canUseDailyLog() {
+  return !isTeamLeaderAccount();
+}
+
+function updateDailyLogTabVisibility() {
+  var tab = document.getElementById('tabDailyLog');
+  var view = document.getElementById('viewDailyLog');
+  if (!tab) return;
+  var show = canUseDailyLog();
+  tab.style.display = show ? '' : 'none';
+  if (!show && currentMode === 'dailylog') switchTab('watermark');
+  if (view && !show) view.classList.remove('active');
+}
+
+function enterAppAfterLogin() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appContent').style.display = '';
+  saveSession();
+  checkService();
+  requestGps();
+  startPolling();
+  setTimeout(function() { lockPersonSelect(); }, 300);
+  updateDailyLogTabVisibility();
+  setTimeout(function() { restoreWmFields(200); }, 600);
+}
+
+function doPlatformLogin() {
+  var username = document.getElementById('loginUsername').value.trim();
+  var password = document.getElementById('loginPassword').value.trim();
+  var errEl = document.getElementById('loginError');
+  if (!username || !password) { errEl.textContent = '请输入用户名和密码'; errEl.style.display = ''; return; }
+
+  errEl.style.display = 'none';
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username, password: password })
+  }).then(function(r) { return r.json(); })
+  .then(function(json) {
+    if (json.success) {
+      APP_SESSION = {
+        token: json.token,
+        username: json.user.username,
+        displayName: json.user.displayName,
+        role: json.user.role,
+        group: json.user.group || ''
+      };
+      if (json.worker) {
+        APP_SESSION.workerName = json.worker.name;
+        APP_SESSION.workerId = json.worker.id;
+        APP_SESSION.workerRole = json.worker.role;
+      } else {
+        APP_SESSION.workerName = json.user.displayName || json.user.username;
+        APP_SESSION.workerRole = 'worker';
+      }
+      enterAppAfterLogin();
+    } else {
+      errEl.textContent = json.message || '登录失败';
+      errEl.style.display = '';
+    }
+  }).catch(function(e) {
+    errEl.textContent = '网络错误，无法连接服务器';
+    errEl.style.display = '';
+  });
+}
+
+function doLogout() {
+  if (!confirm('确定要切换账号吗？')) return;
+  APP_SESSION = null;
+  stopPolling();
+  _notifiedOrderIds = {};
+  localStorage.removeItem('tianwang_mobile_session');
+  localStorage.removeItem('tianwang_trusted_device');
+  sessionStorage.removeItem('tianwang_mobile_session');
+  document.getElementById('loginOverlay').style.display = '';
+  document.getElementById('appContent').style.display = 'none';
+  document.getElementById('loginStep1').style.display = '';
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+// ===================== 工单轮询 =====================
+var _pollTimer = null;
+var _lastPollTime = 0;
+var _notifiedOrderIds = {};  // 已通知过的工单ID集合，避免重复提醒
+
+function startPolling() {
+  if (_pollTimer) return;
+  _lastPollTime = Math.floor(Date.now() / 1000);
+  doPoll();
+  _pollTimer = setInterval(doPoll, 15000);
+}
+
+function stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+function doPoll() {
+  var token = getToken();
+  if (!token) return;
+  var base = (window.API_BASE || '');
+  var url = base + '/api/orders/poll?lastCheck=' + _lastPollTime + '&workerName=' + encodeURIComponent(getWorkerName());
+
+  fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  }).then(function(r) { return r.json(); })
+  .then(function(json) {
+    if (json.success && json.data && json.data.length > 0) {
+      _lastPollTime = json.serverTime || Math.floor(Date.now() / 1000);
+      // 过滤掉已通知过的工单，只对新工单提醒
+      var trulyNew = json.data.filter(function(o) { return !_notifiedOrderIds[o.id]; });
+      if (trulyNew.length > 0) {
+        // 标记这些工单为已通知
+        trulyNew.forEach(function(o) { _notifiedOrderIds[o.id] = true; });
+        showOrderNotification(trulyNew);
+      }
+    } else if (json.success) {
+      _lastPollTime = json.serverTime || _lastPollTime;
+    }
+  }).catch(function(){});
+}
+
+function showOrderNotification(newOrders) {
+  var count = newOrders.length;
+  var msg = count === 1 ?
+    ('新工单：' + (newOrders[0].pointName || '') + ' - ' + (newOrders[0].desc || '') + ' 【' + (newOrders[0].priority || '') + '】') :
+    ('您有 ' + count + ' 条新工单待处理');
+  // 浏览器通知（仅弹一次）
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('天网运维 - 新工单', { body: msg, icon: '/favicon.ico' });
+  }
+  // Toast 轻提示（不阻塞界面）
+  showToast(msg, 'info');
+}
+
+// 请求通知权限
+if ('Notification' in window && Notification.permission === 'default') {
+  setTimeout(function() { Notification.requestPermission(); }, 2000);
+}
+
+// 登录页面回车键支持
+document.getElementById('loginPassword').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doPlatformLogin();
+});
+
+// 页面加载时尝试恢复会话（记住登录则免重复输入）
+(function() {
+  try {
+    var saved = localStorage.getItem('tianwang_mobile_session') || sessionStorage.getItem('tianwang_mobile_session');
+    if (saved) {
+      var s = JSON.parse(saved);
+      if (s.token) {
+        APP_SESSION = s;
+        if (!APP_SESSION.workerName) APP_SESSION.workerName = APP_SESSION.displayName || APP_SESSION.username || '';
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('appContent').style.display = '';
+        checkService();
+        requestGps();
+        startPolling();
+        lockPersonSelect();
+        updateDailyLogTabVisibility();
+        restoreWmFields(500);
+        var trustEl = document.getElementById('trustDevice');
+        if (trustEl) trustEl.checked = !!localStorage.getItem('tianwang_trusted_device');
+      }
+    }
+  } catch(e) {}
+})();
+
+// 会话变更时自动保存（信任设备 → localStorage，否则 sessionStorage）
+function saveSession() {
+  if (!APP_SESSION || !APP_SESSION.token) return;
+  var data = JSON.stringify(APP_SESSION);
+  var trustEl = document.getElementById('trustDevice');
+  var trusted = !trustEl || trustEl.checked;
+  if (trusted) {
+    localStorage.setItem('tianwang_mobile_session', data);
+    localStorage.setItem('tianwang_trusted_device', '1');
+    sessionStorage.removeItem('tianwang_mobile_session');
+  } else {
+    sessionStorage.setItem('tianwang_mobile_session', data);
+    localStorage.removeItem('tianwang_mobile_session');
+    localStorage.removeItem('tianwang_trusted_device');
+  }
+}
+
+// ===================== 工单管理（派单/接单/回单） =====================
+var _orderCache = []; // 缓存工单列表
+var _currentOrderId = null; // 当前操作的工单ID
+var _mobileCreateOrderType = 'construction';
+
+function resolveOrderType(f) {
+  if (f.orderType === 'construction' || f.orderType === 'fault') return f.orderType;
+  if (f.autoCreated) return 'fault';
+  if (f.siteName || f.kmlSiteId) return 'construction';
+  return 'fault';
+}
+
+function getOrderCategoryLabel(f) {
+  return resolveOrderType(f) === 'construction' ? '施工派单' : '故障单';
+}
+
+function orderHasWorkerFeedback(f) {
+  if (!f) return false;
+  if (f.status === '已完成') return true;
+  if (!f.history || !f.history.length) return false;
+  return f.history.some(function(h) {
+    return h.reason === '完工回馈' || h.reason === '回单';
+  });
+}
+
+function canWithdrawOrder(f) {
+  if (orderHasWorkerFeedback(f)) return false;
+  if (f.status === '已完成') return false;
+  return !!(f.assignedTo || f.status === '处理中');
+}
+
+function orderWasRedispatched(f) {
+  if (!f || !f.history || !f.history.length) return false;
+  return f.history.some(function(h) {
+    return h.reason === '派单' && (h.solution || '').indexOf('改派') >= 0;
+  });
+}
+
+function canDeleteOrder(f) {
+  if (orderHasWorkerFeedback(f)) return false;
+  if (f.status === '已完成') return false;
+  if (f.status === '待处理' && !(f.assignedTo || '').trim()) return true;
+  if (orderWasRedispatched(f) && f.status === '处理中' && !!(f.assignedTo || '').trim()) return true;
+  return false;
+}
+
+function getOrderFeedbackSummary(f) {
+  if (!f.history || !f.history.length) return '';
+  for (var i = f.history.length - 1; i >= 0; i--) {
+    var h = f.history[i];
+    if (h.reason === '完工回馈' || h.reason === '回单') {
+      return (h.solution || h.remark || '').trim();
+    }
+  }
+  return '';
+}
+
+function orderCategoryBadgeHtml(f) {
+  var t = resolveOrderType(f);
+  var bg = t === 'construction' ? '#e3f2fd' : '#ffebee';
+  var color = t === 'construction' ? '#1565c0' : '#c62828';
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:' + bg + ';color:' + color + '">' + getOrderCategoryLabel(f) + '</span>';
+}
+
+function mobileFaultTitle(desc) {
+  if (!desc) return '工单';
+  var line = desc.split(/\r?\n/).map(function(s) { return s.trim(); }).filter(Boolean)[0] || desc;
+  return line.length > 40 ? line.slice(0, 40) + '…' : line;
+}
+
+function genMobileFaultId() {
+  var d = new Date();
+  var tag = d.getFullYear() + '' + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+  return 'WD-' + tag + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+}
+
+function composeMobileFaultDesc(siteName, work) {
+  var site = (siteName || '').trim();
+  var lines = (work || '').split(/\r?\n/).map(function(s) { return s.trim(); }).filter(Boolean);
+  if (!site) return lines.join('\n');
+  if (!lines.length) return site;
+  return lines.map(function(line) {
+    return line.indexOf(site) === 0 ? line : site + ' ' + line;
+  }).join('\n');
+}
+
+function refreshMobileFaultSites() {
+  var project = (document.getElementById('mobileOrderProject') || {}).value || '';
+  var dl = document.getElementById('mobileOrderSiteList');
+  if (!dl) return;
+  fetch((window.API_BASE || '') + '/api/sites?_t=' + Date.now()).then(function(r) { return r.json(); }).then(function(res) {
+    var sites = (res && res.success && res.data) ? res.data : [];
+    var names = {};
+    sites.forEach(function(s) {
+      if (!s.name) return;
+      if (project && s.projectId !== project && s.projectName !== project) return;
+      names[s.name] = true;
+    });
+    dl.innerHTML = Object.keys(names).sort().map(function(n) {
+      return '<option value="' + n.replace(/"/g, '&quot;') + '">';
+    }).join('');
+  }).catch(function() {});
+}
+
+var _mobileFaultKmlData = null;
+
+function openMobileCreateOrder(orderType) {
+  if (!canDispatchOrders()) {
+    showToast('队长账号无权派单');
+    return;
+  }
+  _currentOrderId = null;
+  _mobileFaultKmlData = null;
+  _mobileCreateOrderType = orderType || 'construction';
+  var isFault = _mobileCreateOrderType === 'fault';
+  document.getElementById('odTitle').textContent = isFault ? '➕ 故障派单' : '➕ 施工派单';
+  var kmlBlock = isFault ? '' :
+    '<div style="margin-bottom:8px;padding:10px;background:#f5f7fa;border-radius:8px;border:1px dashed #ccc">' +
+    '<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">奥维地图资料（本地 KML 文件）</div>' +
+    '<div style="font-size:11px;color:#888;margin-bottom:8px">客户提供的 .kml 文件，无需外网链接</div>' +
+    '<select id="mobileOrderKmlRef" onchange="onMobileKmlRefChange()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-bottom:8px"><option value="">— 选择已导入资料 —</option></select>' +
+    '<label style="display:block;text-align:center;padding:8px;border:1px solid #1976d2;border-radius:6px;color:#1976d2;font-size:13px;cursor:pointer">上传 KML 文件<input type="file" id="mobileOrderKmlFile" accept=".kml" style="display:none" onchange="onMobileKmlUpload(event)"></label>' +
+    '<div id="mobileKmlPmWrap" style="display:none;margin-top:8px;max-height:140px;overflow:auto;border:1px solid #eee;border-radius:6px;padding:6px;background:#fff"></div></div>';
+  document.getElementById('odBody').innerHTML =
+    '<div style="margin-bottom:10px"><label style="font-size:13px;font-weight:600;color:#333">所属项目<span style="color:#e53935">*</span></label></div>' +
+    '<select id="mobileOrderProject" onchange="refreshMobileFaultSites();loadMobileKmlOptions()" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;margin-bottom:12px"><option value="">— 请选择项目 —</option></select>' +
+    '<div style="margin-bottom:8px"><label style="font-size:13px;font-weight:600;color:#333">站点名称<span style="color:#e53935">*</span></label></div>' +
+    '<input id="mobileOrderSite" list="mobileOrderSiteList" placeholder="如：生米镇相里村" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:12px">' +
+    '<datalist id="mobileOrderSiteList"></datalist>' +
+    kmlBlock +
+    '<div style="margin-bottom:8px"><label style="font-size:13px;font-weight:600;color:#333">' + (isFault ? '故障描述' : '施工内容') + (isFault ? '<span style="color:#e53935">*</span>' : '<span style="font-size:11px;color:#888;font-weight:400">（选填）</span>') + '</label></div>' +
+    '<textarea id="mobileOrderWork" rows="5" placeholder="' + (isFault ? '描述故障现象、影响范围等' : '如：&#10;生米镇相里村民房001栋…&#10;春红实业员工宿舍X1栋…') + '" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;resize:vertical"></textarea>' +
+    '<div style="margin-top:12px;margin-bottom:8px"><label style="font-size:13px;font-weight:600;color:#333">指定队长<span style="color:#e53935">*</span></label></div>' +
+    '<select id="mobileOrderLeader" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff"><option value="">— 请选择队长 —</option></select>';
+  document.getElementById('odActions').innerHTML =
+    '<button onclick="closeOrderDetail()" style="flex:1;padding:11px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;cursor:pointer">取消</button>' +
+    '<button onclick="submitMobileCreateOrder()" style="flex:1;padding:11px;border:none;border-radius:8px;background:#ff6f00;color:#fff;font-size:14px;font-weight:600;cursor:pointer">派单给队长</button>';
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/projects?_t=' + Date.now()).then(function(r) { return r.json(); }).then(function(json) {
+    var sel = document.getElementById('mobileOrderProject');
+    if (!sel || !json.success || !Array.isArray(json.data)) return;
+    json.data.forEach(function(prj) {
+      var opt = document.createElement('option');
+      opt.value = prj.name;
+      opt.textContent = prj.name;
+      sel.appendChild(opt);
+    });
+  }).catch(function() {});
+  refreshMobileFaultSites();
+  loadWorkersAsync(function(workers) {
+    var sel = document.getElementById('mobileOrderLeader');
+    var leaders = typeof getTeamLeaders === 'function' ? getTeamLeaders(workers) : workers.filter(function(w) { return w.role === 'team_leader'; });
+    sel.innerHTML = '<option value="">— 请选择队长 —</option>' +
+      leaders.map(function(w) { return '<option value="' + w.name + '">' + w.name + '（队长）</option>'; }).join('');
+  });
+  document.getElementById('orderDetailModal').style.display = 'flex';
+  if (!isFault) loadMobileKmlOptions();
+}
+
+function loadMobileKmlOptions() {
+  var sel = document.getElementById('mobileOrderKmlRef');
+  if (!sel) return;
+  var project = (document.getElementById('mobileOrderProject') || {}).value || '';
+  var cur = sel.value;
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/kml-sites?_t=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + getToken() } })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      sel.innerHTML = '<option value="">— 选择已导入资料 —</option>';
+      if (json.success && Array.isArray(json.data)) {
+        json.data.forEach(function(k) {
+          if (project && k.projectName !== project) return;
+          var opt = document.createElement('option');
+          opt.value = k.id;
+          opt.textContent = (k.siteName || '') + '（' + (k.placemarkCount || 0) + '点）';
+          sel.appendChild(opt);
+        });
+      }
+      if (cur) sel.value = cur;
+    }).catch(function() {});
+}
+
+function onMobileKmlRefChange() {
+  var id = (document.getElementById('mobileOrderKmlRef') || {}).value;
+  if (!id) {
+    _mobileFaultKmlData = null;
+    var wrap = document.getElementById('mobileKmlPmWrap');
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/kml-sites/' + encodeURIComponent(id), { headers: { 'Authorization': 'Bearer ' + getToken() } })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (!json.success) { showToast(json.message || '加载失败'); return; }
+      applyMobileKmlDetail(json.data);
+    }).catch(function() { showToast('加载资料失败'); });
+}
+
+function applyMobileKmlDetail(data) {
+  _mobileFaultKmlData = data;
+  if (data.siteName) document.getElementById('mobileOrderSite').value = data.siteName;
+  if (data.projectName) {
+    var sel = document.getElementById('mobileOrderProject');
+    if (sel && Array.from(sel.options).some(function(o) { return o.value === data.projectName; })) {
+      sel.value = data.projectName;
+    }
+  }
+  renderMobileKmlPlacemarks();
+}
+
+function renderMobileKmlPlacemarks() {
+  var wrap = document.getElementById('mobileKmlPmWrap');
+  if (!wrap || !_mobileFaultKmlData || !_mobileFaultKmlData.placemarks) return;
+  var html = '';
+  _mobileFaultKmlData.placemarks.forEach(function(pm, i) {
+    html += '<label style="display:flex;gap:6px;padding:4px 0;font-size:11px;border-bottom:1px solid #f0f0f0">' +
+      '<input type="checkbox" class="mobile_kml_pm" data-idx="' + i + '" onchange="syncMobileWorkFromKml()">' +
+      '<span style="line-height:1.4">' + (pm.name || '') + '</span></label>';
+  });
+  wrap.innerHTML = html || '<div style="text-align:center;color:#999;padding:8px">无点位</div>';
+  wrap.style.display = '';
+}
+
+function syncMobileWorkFromKml() {
+  if (!_mobileFaultKmlData || !_mobileFaultKmlData.placemarks) return;
+  var lines = [];
+  document.querySelectorAll('.mobile_kml_pm:checked').forEach(function(cb) {
+    var pm = _mobileFaultKmlData.placemarks[parseInt(cb.getAttribute('data-idx'), 10)];
+    if (pm && pm.name) lines.push(pm.name);
+  });
+  document.getElementById('mobileOrderWork').value = lines.join('\n');
+}
+
+function onMobileKmlUpload(ev) {
+  var file = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!file) return;
+  var project = (document.getElementById('mobileOrderProject') || {}).value;
+  if (!project) { showToast('请先选择所属项目'); return; }
+  if (!/\.kml$/i.test(file.name)) { showToast('请上传 .kml 文件'); return; }
+  showToast('正在解析 KML…');
+  var fd = new FormData();
+  fd.append('file', file);
+  fd.append('projectName', project);
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/kml-sites', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken() }, body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (!json.success) { showToast(json.message || json.error || '上传失败'); return; }
+      showToast('已导入「' + (json.data.siteName || '') + '」', 'success');
+      loadMobileKmlOptions();
+      document.getElementById('mobileOrderKmlRef').value = json.data.id;
+      applyMobileKmlDetail(json.data);
+    }).catch(function() { showToast('上传失败'); });
+}
+
+function parseFaultApiResult(json) {
+  if (!json || json.success === false) {
+    throw new Error((json && (json.message || json.error)) || '操作失败');
+  }
+  return json;
+}
+
+function submitMobileCreateOrder() {
+  if (!canDispatchOrders()) {
+    showToast('队长账号无权派单');
+    return;
+  }
+  var projectName = (document.getElementById('mobileOrderProject').value || '').trim();
+  var siteName = (document.getElementById('mobileOrderSite').value || '').trim();
+  var work = (document.getElementById('mobileOrderWork').value || '').trim();
+  var leader = document.getElementById('mobileOrderLeader').value;
+  if (!projectName) { showToast('请选择所属项目'); return; }
+  if (!siteName) { showToast('请填写站点名称'); return; }
+  var workLabel = _mobileCreateOrderType === 'fault' ? '故障描述' : '施工内容';
+  if (_mobileCreateOrderType === 'fault' && !work) { showToast('请填写' + workLabel); return; }
+  if (!leader) { showToast('请选择队长'); return; }
+  var desc = composeMobileFaultDesc(siteName, work);
+  var dispatcher = (APP_SESSION && (APP_SESSION.displayName || APP_SESSION.username)) || '';
+  var fault = {
+    id: genMobileFaultId(),
+    orderType: _mobileCreateOrderType,
+    pointId: '',
+    pointName: siteName,
+    projectName: projectName,
+    siteName: siteName,
+    kmlSiteId: (_mobileFaultKmlData && _mobileFaultKmlData.id) || (document.getElementById('mobileOrderKmlRef') || {}).value || '',
+    kmlFilename: _mobileFaultKmlData ? (_mobileFaultKmlData.filename || '') : '',
+    desc: desc,
+    dispatcher: dispatcher,
+    assignedTo: leader,
+    priority: '普通',
+    note: '',
+    status: '处理中',
+    createTime: formatNow(),
+    history: [{ person: leader, time: formatNow(), reason: '派单', solution: '指定队长：' + leader }]
+  };
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/faults', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+    body: JSON.stringify({ action: 'create', fault: fault })
+  }).then(function(r) { return r.json().then(function(j) { return parseFaultApiResult(j); }); })
+  .then(function() {
+    closeOrderDetail();
+    showToast('已派单给队长 ' + leader, 'success');
+    loadOrderList();
+  }).catch(function(err) {
+    showToast(err.message || '网络错误，请重试');
+  });
+}
+
+function isOrderAdminRole(role) {
+  return ['admin', 'site_admin', 'sysadmin', 'projadmin', 'operator', 'opadmin'].indexOf(role) >= 0;
+}
+
+function parseFaultsResponse(json) {
+  if (!json) return [];
+  if (json.success === false) return null;
+  if (Array.isArray(json.data)) return json.data;
+  if (Array.isArray(json)) return json;
+  return [];
+}
+
+function refreshOrderList() {
+  var adminBox = document.getElementById('orderListAdmin');
+  var workerBox = document.getElementById('orderListWorker');
+  var box = (adminBox && adminBox.offsetParent !== null) ? adminBox : workerBox;
+  if (box) {
+    box.innerHTML = '<div class="order-empty" style="padding:24px"><span class="icon">⏳</span><p>刷新中…</p></div>';
+  }
+  loadOrderList(true);
+}
+
+function loadOrderList(isRefresh) {
+  var base = (window.API_BASE || '');
+  var role = APP_SESSION ? APP_SESSION.role : '';
+  var workerName = getWorkerName();
+  var token = getToken();
+  var url = base + '/api/faults?_t=' + Date.now();
+  var fetchOpts = { cache: 'no-store' };
+  if (token) fetchOpts.headers = { 'Authorization': 'Bearer ' + token };
+
+  var adminView = document.getElementById('orderAdminView');
+  var workerView = document.getElementById('orderWorkerView');
+  if (!adminView || !workerView) return;
+
+  if (canDispatchOrders()) {
+    adminView.style.display = '';
+    workerView.style.display = 'none';
+    fetch(url, fetchOpts)
+      .then(function(r) { return r.json(); })
+      .then(function(json) {
+        var list = parseFaultsResponse(json);
+        if (list === null) {
+          showToast((json && json.message) || '加载失败');
+          renderAdminOrderList();
+          return;
+        }
+        _orderCache = list;
+        renderAdminOrderList();
+        if (isRefresh) showToast('已刷新 ' + list.length + ' 条工单', 'success');
+      })
+      .catch(function() {
+        document.getElementById('orderListAdmin').innerHTML = '<div class="order-empty"><span class="icon">⚠️</span><p>加载失败，请检查网络</p></div>';
+        showToast('刷新失败，请检查网络');
+      });
+  } else if (workerName) {
+    adminView.style.display = 'none';
+    workerView.style.display = '';
+    var roleLabel = (APP_SESSION && APP_SESSION.workerRole === 'team_leader') ? '队长' : '施工人员';
+    document.getElementById('orderWorkerName').textContent = roleLabel + '：' + workerName;
+    fetch(url, fetchOpts)
+      .then(function(r) { return r.json(); })
+      .then(function(json) {
+        var list = parseFaultsResponse(json);
+        if (list === null) {
+          showToast((json && json.message) || '加载失败');
+          renderWorkerOrderList();
+          return;
+        }
+        _orderCache = Array.isArray(list) ? list : [];
+        renderWorkerOrderList();
+        if (isRefresh) showToast('已刷新 ' + _orderCache.length + ' 条工单', 'success');
+      })
+      .catch(function() {
+        document.getElementById('orderListWorker').innerHTML = '<div class="order-empty"><span class="icon">⚠️</span><p>加载失败，请检查网络</p></div>';
+        showToast('刷新失败，请检查网络');
+      });
+  } else {
+    adminView.style.display = 'none';
+    workerView.style.display = 'none';
+    if (isRefresh) showToast('请先登录');
+  }
+}
+
+function renderAdminOrderList() {
+  var container = document.getElementById('orderListAdmin');
+  if (!_orderCache.length) {
+    container.innerHTML = '<div class="order-empty"><span class="icon">📋</span><p>暂无待处理工单</p></div>';
+    return;
+  }
+  // 只显示未完成的工单
+  var pending = _orderCache.filter(function(f) { return f.status !== '已完成'; });
+  if (!pending.length) {
+    container.innerHTML = '<div class="order-empty"><span class="icon">✅</span><p>所有工单已处理完毕</p></div>';
+    return;
+  }
+
+  var html = '<div style="font-size:12px;color:#888;margin-bottom:8px">共 ' + pending.length + ' 条待处理工单</div>';
+  pending.forEach(function(f) {
+    var statusCls = f.status === '待处理' ? 'oc-status-pending' : 'oc-status-processing';
+    var statusTxt = f.status === '待处理' ? '待派单' : (f.status === '处理中' ? '处理中' : f.status);
+    var canWithdraw = canWithdrawOrder(f);
+    var canDelete = canDeleteOrder(f);
+    var feedback = getOrderFeedbackSummary(f);
+    var dispatchLabel = f.assignedTo ? '改派队长' : '指定队长';
+    html += '<div class="order-card">' +
+      '<div class="oc-head"><span class="oc-id">' + escHtml(f.id) + '</span><span class="oc-status ' + statusCls + '">' + statusTxt + '</span></div>' +
+      '<div style="margin:4px 0 6px">' + orderCategoryBadgeHtml(f) + '</div>' +
+      '<div class="oc-point" style="white-space:pre-wrap;line-height:1.55;font-weight:600">' + escHtml(f.desc || f.pointName || '-') + '</div>' +
+      (feedback ? '<div style="font-size:11px;color:#2e7d32;background:#e8f5e9;border-radius:6px;padding:6px 8px;margin:6px 0;line-height:1.5">✅ 完工回馈：' + escHtml(feedback.length > 60 ? feedback.slice(0, 60) + '…' : feedback) + '</div>' : '') +
+      '<div class="oc-meta"><span>⏰ ' + (f.createTime || '-') + '</span>' +
+      (f.assignedTo ? '<span>👷 队长：' + escHtml(f.assignedTo) + '</span>' : '<span style="color:#e65100">⚠️ 未指定队长</span>') + '</div>' +
+      '<div class="oc-actions">' +
+      '<button class="oc-btn oc-btn-dispatch" onclick="openDispatchPanel(\'' + f.id + '\')">📋 ' + dispatchLabel + '</button>' +
+      (canWithdraw ? '<button class="oc-btn" style="background:#fff;color:#c62828;border:1px solid #c62828" onclick="withdrawMobileDispatch(\'' + f.id + '\')">↩ 撤回派单</button>' : '') +
+      (canDelete ? '<button class="oc-btn" style="background:#c62828;color:#fff;border:1px solid #c62828" onclick="deleteMobileDispatch(\'' + f.id + '\')">🗑 删除工单</button>' : '') +
+      '</div>' +
+      '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function renderWorkerOrderList() {
+  var container = document.getElementById('orderListWorker');
+  if (!_orderCache.length) {
+    container.innerHTML = '<div class="order-empty"><span class="icon">📋</span><p>暂无工单</p><p style="margin-top:4px;font-size:11px;color:#ccc">等待管理员派单中...</p></div>';
+    return;
+  }
+
+  var finalHtml = '';
+  finalHtml += '<div style="font-size:12px;color:#1565c0;margin-bottom:6px;font-weight:600">📌 我的工单（' + _orderCache.length + '）</div>';
+  _orderCache.forEach(function(f) {
+    finalHtml += buildOrderCard(f, true);  // 全是自己的工单
+  });
+  container.innerHTML = finalHtml;
+}
+
+function buildOrderCard(f, isMine) {
+  var statusCls = f.status === '待处理' ? 'oc-status-pending' : (f.status === '处理中' ? 'oc-status-processing' : 'oc-status-done');
+  var actions = '';
+  var isConstruction = resolveOrderType(f) === 'construction';
+  if (isMine && f.status === '待处理') {
+    actions = '<div class="oc-actions"><button class="oc-btn oc-btn-accept" onclick="doAcceptOrder(\'' + f.id + '\')">✅ 接单</button></div>';
+  } else if (isMine && f.status === '处理中') {
+    if (isConstruction) {
+      actions = '<div class="oc-actions"><button class="oc-btn oc-btn-report" style="background:#2e7d32" onclick="openCompletionPanel(\'' + f.id + '\')">✅ 完工回馈</button></div>';
+    } else {
+      actions = '<div class="oc-actions"><button class="oc-btn oc-btn-report" onclick="openReportPanel(\'' + f.id + '\')">📸 故障回单</button></div>';
+    }
+  } else if (f.status === '已完成') {
+    // 已完成的不显示操作按钮
+  }
+
+  var lastH = f.history && f.history.length ? f.history[f.history.length - 1] : null;
+  var feedback = getOrderFeedbackSummary(f);
+  return '<div class="order-card" id="card-' + f.id + '">' +
+    '<div class="oc-head"><span class="oc-id">' + escHtml(f.id) + '</span><span class="oc-status ' + statusCls + '">' + f.status + '</span></div>' +
+    '<div style="margin:4px 0 6px">' + orderCategoryBadgeHtml(f) + '</div>' +
+    '<div class="oc-point" style="white-space:pre-wrap;line-height:1.55;font-weight:600">' + escHtml(f.desc || f.pointName || '-') + '</div>' +
+    (feedback ? '<div style="font-size:11px;color:#2e7d32;background:#e8f5e9;border-radius:6px;padding:6px 8px;margin:6px 0;line-height:1.5">✅ 完工回馈：' + escHtml(feedback.length > 80 ? feedback.slice(0, 80) + '…' : feedback) + '</div>' : '') +
+    '<div class="oc-meta"><span>⏰ ' + (f.createTime || '-') + '</span>' +
+    (lastH ? '<span>👤 ' + escHtml(lastH.person) + '</span>' : '') +
+    (f.assignedTo ? '<span>🎯 队长：' + escHtml(f.assignedTo) + '</span>' : '') + '</div>' +
+    actions + '</div>';
+}
+
+function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function copyTextToClipboard(text, okMsg) {
+  var val = (text || '').trim();
+  if (!val || val === '-') { showToast('暂无内容可复制'); return; }
+  function done(ok) {
+    showToast(ok ? (okMsg || '已复制到剪贴板') : '复制失败，请长按文字手动复制');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(val).then(function() { done(true); }).catch(function() { fallbackCopy(val, done); });
+    return;
+  }
+  fallbackCopy(val, done);
+}
+
+function fallbackCopy(text, done) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { done(document.execCommand('copy')); } catch (e) { done(false); }
+  document.body.removeChild(ta);
+}
+
+function copyTextFromEl(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  copyTextToClipboard(el.textContent || '');
+}
+
+// ---- site_admin: 打开派单面板 ----
+function openDispatchPanel(faultId) {
+  if (!canDispatchOrders()) {
+    showToast('队长账号无权派单');
+    return;
+  }
+  _currentOrderId = faultId;
+  var f = _orderCache.find(function(x) { return x.id === faultId; });
+  if (!f) return;
+
+  document.getElementById('odTitle').textContent = f.assignedTo ? '📋 改派队长' : '📋 指定队长';
+  var descText = f.desc || f.pointName || '-';
+  var bodyHtml = '<div style="background:#f5f5f5;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px">' +
+    '<div><b>工单号：</b>' + escHtml(f.id) + ' ' + orderCategoryBadgeHtml(f) + '</div>' +
+    '<div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+      '<b>工单描述：</b>' +
+      '<button type="button" onclick="copyTextFromEl(\'orderDescText\')" style="flex-shrink:0;border:1px solid #1976d2;background:#fff;color:#1976d2;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer">📋 复制</button>' +
+    '</div>' +
+    '<div id="orderDescText" style="margin-top:4px;white-space:pre-wrap;line-height:1.55;background:#fff;border-radius:6px;padding:8px;border:1px solid #eee">' + escHtml(descText) + '</div>' +
+    '<div style="margin-top:8px"><b>当前状态：</b>' + f.status + (f.assignedTo ? '（队长：' + escHtml(f.assignedTo) + '）' : '（未指定队长）') + '</div>' +
+    '</div>' +
+    '<div style="margin-bottom:8px"><label style="font-size:13px;font-weight:600;color:#333">选择队长：</label></div>' +
+    '<select id="dispatchWorkerSel" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff">' +
+    '<option value="">— 请选择队长 —</option></select>';
+
+  document.getElementById('odBody').innerHTML = bodyHtml;
+
+  loadWorkersAsync(function(workers) {
+    var sel = document.getElementById('dispatchWorkerSel');
+    var leaders = typeof getTeamLeaders === 'function' ? getTeamLeaders(workers) : workers.filter(function(w) { return w.role === 'team_leader'; });
+    sel.innerHTML = '<option value="">— 请选择队长 —</option>' +
+      leaders.map(function(w) {
+        return '<option value="' + w.name + '"' + (f.assignedTo === w.name ? ' selected' : '') + '>' + w.name + '（队长）</option>';
+      }).join('');
+  });
+
+  document.getElementById('odActions').innerHTML =
+    '<button onclick="closeOrderDetail()" style="flex:1;padding:11px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;cursor:pointer">取消</button>' +
+    '<button onclick="submitMobileDispatch()" style="flex:1;padding:11px;border:none;border-radius:8px;background:#ff6f00;color:#fff;font-size:14px;font-weight:600;cursor:pointer">确认派给队长</button>';
+
+  document.getElementById('orderDetailModal').style.display = 'flex';
+}
+
+function submitMobileDispatch() {
+  var workerName = document.getElementById('dispatchWorkerSel').value;
+  if (!workerName) { showToast('请选择队长'); return; }
+  if (!_currentOrderId) return;
+
+  var base = (window.API_BASE || '');
+  // 获取当前工单
+  var f = _orderCache.find(function(x) { return x.id === _currentOrderId; });
+  if (!f) return;
+
+  var hadDispatch = !!(f.history && f.history.some(function(h) { return h.reason === '派单'; }));
+  f.assignedTo = workerName;
+  if (f.status === '待处理') f.status = '处理中';
+  if (!f.history) f.history = [];
+  f.history.push({ person: workerName, time: formatNow(), reason: '派单', solution: hadDispatch ? ('改派队长：' + workerName) : ('指定队长：' + workerName) });
+
+  // 同步到服务端
+  fetch(base + '/api/faults', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+    body: JSON.stringify({ action: 'update', faults: [f] })
+  }).then(function(r) { return r.json().then(function(j) { return parseFaultApiResult(j); }); })
+  .then(function() {
+    closeOrderDetail();
+    showToast('已派单给队长 ' + workerName, 'success');
+    loadOrderList();
+  }).catch(function(err) {
+    showToast(err.message || '网络错误，请重试');
+  });
+}
+
+function withdrawMobileDispatch(faultId) {
+  if (!canDispatchOrders()) {
+    showToast('队长账号无权撤回派单');
+    return;
+  }
+  var f = _orderCache.find(function(x) { return x.id === faultId; });
+  if (!f) return;
+  if (orderHasWorkerFeedback(f)) { showToast('施工人员已提交完工回馈，无法撤回'); return; }
+  if (f.status === '已完成') { showToast('已完成工单无法撤回'); return; }
+  if (!f.assignedTo && f.status === '待处理') { showToast('该工单尚未派单'); return; }
+  if (!confirm('确定撤回派单？队长将不再看到此工单。')) return;
+  var prev = f.assignedTo || '';
+  f.assignedTo = '';
+  f.status = '待处理';
+  if (!f.history) f.history = [];
+  var operator = (APP_SESSION && (APP_SESSION.displayName || APP_SESSION.username)) || '管理员';
+  f.history.push({
+    person: operator,
+    time: formatNow(),
+    reason: '撤回派单',
+    solution: prev ? ('撤回对「' + prev + '」的派单') : '撤回派单'
+  });
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/faults', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+    body: JSON.stringify({ action: 'update', faults: [f] })
+  }).then(function(r) { return r.json().then(function(j) { return parseFaultApiResult(j); }); })
+  .then(function() {
+    showToast('已撤回派单', 'success');
+    loadOrderList();
+  }).catch(function(err) {
+    showToast(err.message || '网络错误，请重试');
+  });
+}
+
+function deleteMobileDispatch(faultId) {
+  if (!canDispatchOrders()) {
+    showToast('队长账号无权删除工单');
+    return;
+  }
+  var f = _orderCache.find(function(x) { return x.id === faultId; });
+  if (!f) return;
+  if (!canDeleteOrder(f)) { showToast('该工单不可删除'); return; }
+  if (!confirm('确定删除此工单？\n\n适用于改派后确认无需施工的情况，删除后队长将不再看到。')) return;
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/faults', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+    body: JSON.stringify({ action: 'delete', id: faultId })
+  }).then(function(r) { return r.json().then(function(j) { return parseFaultApiResult(j); }); })
+  .then(function() {
+    _orderCache = _orderCache.filter(function(x) { return x.id !== faultId; });
+    showToast('工单已删除', 'success');
+    loadOrderList();
+  }).catch(function(err) {
+    showToast(err.message || '删除失败');
+  });
+}
+
+// ---- 施工人员：接单 ----
+function doAcceptOrder(faultId) {
+  _currentOrderId = faultId;
+  var f = _orderCache.find(function(x) { return x.id === faultId; });
+  if (!f) return;
+  var workerName = getWorkerName();
+
+  // 安全校验：工单必须已派给当前施工人员
+  if (f.assignedTo !== workerName) {
+    showToast('无权操作此工单');
+    return;
+  }
+
+  f.status = '处理中';
+  if (!f.history) f.history = [];
+  f.history.push({ person: workerName, time: formatNow(), reason: '接单', solution: '手机端施工人员接单' });
+
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/faults', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+    body: JSON.stringify({ action: 'update', faults: [f] })
+  }).then(function(r) { return r.json(); })
+  .then(function(json) {
+    showToast('接单成功！请尽快处理', 'success');
+    loadOrderList(); // 刷新列表
+  }).catch(function() {
+    showToast('网络错误');
+  });
+}
+
+// ---- 故障处理上传后自动完成工单回单 ----
+function autoCompleteFaultReport(workerName, photoData, pointName) {
+  if (!workerName) return;
+  var base = (window.API_BASE || '');
+
+  fetch(base + '/api/faults', {
+    headers: { 'Authorization': 'Bearer ' + getToken() }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(json) {
+    var faults = (json.data || json.faults || json || []);
+    if (!Array.isArray(faults)) faults = [];
+
+    // 筛选该施工人员的待处理/处理中工单
+    var activeFaults = faults.filter(function(f) {
+      return f.assignedTo === workerName && (f.status === '待处理' || f.status === '处理中');
+    });
+
+    if (activeFaults.length === 0) {
+      // 没有待处理工单，静默即可（已正常上传照片）
+      console.log('[自动回单] 当前施工人员无待处理/处理中工单');
+      return;
+    }
+
+    // 如果有多个工单，优先匹配点位名称
+    var targetFault = null;
+    if (pointName && activeFaults.length > 1) {
+      targetFault = activeFaults.find(function(f) {
+        return f.pointName && f.pointName.indexOf(pointName) !== -1;
+      });
+    }
+    if (!targetFault) targetFault = activeFaults[0];
+
+    // 执行回单：更新状态 + 写入历史 + 上传照片
+    targetFault.status = '已完成';
+    if (!targetFault.history) targetFault.history = [];
+    targetFault.history.push({
+      person: workerName,
+      time: formatNow(),
+      reason: '回单',
+      solution: '故障处理完成，水印拍照自动回单',
+      photoData: photoData ? 'has_photo' : null,
+      recovered: '是'
+    });
+
+    fetch(base + '/api/faults', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+      body: JSON.stringify({ action: 'update', faults: [targetFault] })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function() {
+      showToast('✅ 已自动完成「' + (targetFault.pointName || targetFault.id) + '」工单回单', 'success');
+      // 上传回单照片到服务端
+      if (photoData) uploadReportPhoto(targetFault.id, photoData);
+      logAudit('自动回单', '故障处理照片上传 → 自动完成工单 ' + targetFault.id + ' 回单');
+    })
+    .catch(function(e) {
+      console.log('[自动回单] 更新失败:', e);
+      showToast('⚠️ 照片已上传，但工单回单同步失败');
+    });
+  })
+  .catch(function(e) {
+    console.log('[自动回单] 获取工单列表失败:', e);
+  });
+}
+
+// ---- 施工人员：施工派单完工回馈 ----
+function openCompletionPanel(faultId) {
+  _currentOrderId = faultId;
+  var f = _orderCache.find(function(x) { return x.id === faultId; });
+  if (!f) return;
+  var workerName = getWorkerName();
+  if (f.assignedTo && f.assignedTo !== workerName) {
+    showToast('无权操作此工单');
+    return;
+  }
+
+  document.getElementById('odTitle').textContent = '✅ 完工回馈 - ' + (f.pointName || f.siteName || '');
+  var bodyHtml = '<div style="background:#f5f5f5;border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px">' +
+    '<div><b>工单号：</b>' + escHtml(f.id) + '</div>' +
+    '<div style="margin-top:4px"><b>施工内容：</b></div>' +
+    '<div style="margin-top:4px;white-space:pre-wrap;line-height:1.55">' + escHtml(f.desc || f.pointName || '-') + '</div>' +
+    '</div>' +
+    '<div style="margin-bottom:8px"><label style="font-size:13px;font-weight:600;color:#333">完工说明</label>' +
+    '<span style="font-size:11px;color:#888;margin-left:4px">（选填）</span></div>' +
+    '<textarea id="completionRemark" rows="4" placeholder="如：立杆3基已完成，光缆熔接完毕，现场已清理…" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;resize:vertical"></textarea>' +
+    '<div style="margin-top:12px;margin-bottom:8px"><label style="font-size:13px;font-weight:600;color:#333">现场照片</label>' +
+    '<p style="font-size:11px;color:#999;margin-top:2px">可上传完工水印照片作为凭证（选填）</p></div>' +
+    '<input type="file" id="completionPhotoInput" accept="image/*" capture="environment" onchange="handleCompletionPhoto(this)" style="width:100%">';
+  if (wmState.watermarked) {
+    bodyHtml += '<div style="margin-top:10px;text-align:center"><img src="' + wmState.watermarked + '" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #eee"></div>' +
+      '<p style="font-size:11px;color:#4caf50;margin-top:4px">✅ 将使用当前水印照片作为完工凭证</p>';
+  }
+
+  document.getElementById('odBody').innerHTML = bodyHtml;
+  document.getElementById('odActions').innerHTML =
+    '<button onclick="closeOrderDetail()" style="flex:1;padding:11px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;cursor:pointer">取消</button>' +
+    '<button onclick="switchTab(\'watermark\');closeOrderDetail()" style="flex:1;padding:11px;border:none;border-radius:8px;background:#1565c0;color:#fff;font-size:14px;font-weight:600;cursor:pointer">📷 先去拍照</button>' +
+    '<button onclick="submitCompletionFeedback()" style="flex:1;padding:11px;border:none;border-radius:8px;background:#2e7d32;color:#fff;font-size:14px;font-weight:600;cursor:pointer">✅ 提交完工</button>';
+
+  document.getElementById('orderDetailModal').style.display = 'flex';
+}
+
+function handleCompletionPhoto(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var preview = document.createElement('div');
+      preview.style.cssText = 'text-align:center;margin-top:10px';
+      preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #eee"><p style="font-size:11px;color:#4caf50;margin-top:4px">照片已选择</p>';
+      document.getElementById('odBody').appendChild(preview);
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function submitCompletionFeedback() {
+  if (!_currentOrderId) return;
+  var f = _orderCache.find(function(x) { return x.id === _currentOrderId; });
+  if (!f) return;
+  var workerName = getWorkerName();
+  if (f.assignedTo && f.assignedTo !== workerName) {
+    showToast('无权操作此工单');
+    return;
+  }
+  var remarkEl = document.getElementById('completionRemark');
+  var remark = remarkEl ? remarkEl.value.trim() : '';
+  var photoData = wmState.watermarked || null;
+
+  f.status = '已完成';
+  if (!f.history) f.history = [];
+  f.history.push({
+    person: workerName,
+    time: formatNow(),
+    reason: '完工回馈',
+    solution: remark || '施工已完工',
+    photoData: photoData ? 'has_photo' : null,
+    submitTime: formatNow()
+  });
+
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/faults', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+    body: JSON.stringify({ action: 'update', faults: [f] })
+  }).then(function(r) { return r.json(); })
+  .then(function() {
+    closeOrderDetail();
+    showToast('完工回馈已提交', 'success');
+    loadOrderList();
+    if (photoData) uploadReportPhoto(f.id, photoData);
+    logAudit('完工回馈', '施工派单完工 - ' + (f.pointName || f.id));
+  }).catch(function() {
+    showToast('网络错误');
+  });
+}
+
+// ---- 施工人员：打开回单面板（上传水印照片） ----
+function openReportPanel(faultId) {
+  _currentOrderId = faultId;
+  var f = _orderCache.find(function(x) { return x.id === faultId; });
+  if (!f) return;
+
+  document.getElementById('odTitle').textContent = '📸 故障回单 - ' + (f.pointName || '');
+  var bodyHtml = '<div style="background:#f5f5f5;border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px">' +
+    '<div><b>工单号：</b>' + escHtml(f.id) + '</div>' +
+    '<div style="margin-top:4px"><b>点位：</b>' + escHtml(f.pointName) + '</div>' +
+    '<div style="margin-top:4px"><b>故障：</b>' + escHtml(f.desc) + '</div>' +
+    '</div>' +
+    '<div style="margin-bottom:10px"><label style="font-size:13px;font-weight:600;color:#333">上传故障处理水印照片：</label>' +
+    '<p style="font-size:11px;color:#999;margin-top:2px">拍摄现场处理后的照片作为回单凭证</p></div>' +
+    '<input type="file" id="reportPhotoInput" accept="image/*" capture="environment" onchange="handleReportPhoto(this)" style="width:100%">';
+  // 如果已有水印图则复用
+  if (wmState.watermarked) {
+    bodyHtml += '<div style="margin-top:10px;text-align:center"><img src="' + wmState.watermarked + '" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #eee"></div>' +
+      '<p style="font-size:11px;color:#4caf50;margin-top:4px">✅ 将使用当前水印照片作为回单凭证</p></div>';
+  }
+
+  document.getElementById('odBody').innerHTML = bodyHtml;
+  document.getElementById('odActions').innerHTML =
+    '<button onclick="closeOrderDetail()" style="flex:1;padding:11px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;cursor:pointer">取消</button>' +
+    '<button onclick="switchTab(\'watermark\');closeOrderDetail()" style="flex:1;padding:11px;border:none;border-radius:8px;background:#1565c0;color:#fff;font-size:14px;font-weight:600;cursor:pointer">📷 先去拍照</button>' +
+    '<button onclick="submitReport()" style="flex:1;padding:11px;border:none;border-radius:8px;background:#2e7d32;color:#fff;font-size:14px;font-weight:600;cursor:pointer">✅ 提交回单</button>';
+
+  document.getElementById('orderDetailModal').style.display = 'flex';
+}
+
+function handleReportPhoto(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      // 简单预览 - 实际应该走水印流程
+      var preview = document.createElement('div');
+      preview.style.cssText = 'text-align:center;margin-top:10px';
+      preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #eee"><p style="font-size:11px;color:#4caf50;margin-top:4px">照片已选择</p>';
+      document.getElementById('odBody').appendChild(preview);
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function submitReport() {
+  if (!_currentOrderId) return;
+  var f = _orderCache.find(function(x) { return x.id === _currentOrderId; });
+  if (!f) return;
+  var workerName = getWorkerName();
+
+  // 使用当前水印照片或标记为文字回单
+  var photoData = wmState.watermarked || null;
+  f.status = '已完成';
+  if (!f.history) f.history = [];
+  f.history.push({
+    person: workerName,
+    time: formatNow(),
+    reason: '回单',
+    solution: '故障处理完成，上传水印回单照片',
+    photoData: photoData ? 'has_photo' : null,
+    recovered: '是'
+  });
+
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/faults', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+    body: JSON.stringify({ action: 'update', faults: [f] })
+  }).then(function(r) { return r.json(); })
+  .then(function(json) {
+    closeOrderDetail();
+    showToast('回单成功！工单已完成', 'success');
+    loadOrderList();
+
+    // 如果有水印照片，也上传一份到服务端
+    if (photoData) {
+      uploadReportPhoto(f.id, photoData);
+    }
+  }).catch(function() {
+    showToast('网络错误');
+  });
+}
+
+function uploadReportPhoto(faultId, dataUrl) {
+  compressPhotoDataUrl(dataUrl, MAX_PHOTO_BYTES, function(compressedDataUrl) {
+    try {
+      var src = compressedDataUrl.indexOf(',') >= 0 ? compressedDataUrl.split(',')[1] : compressedDataUrl;
+      var byteStr = atob(src);
+      var arr = new Uint8Array(byteStr.length);
+      for (var i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+      var blob = new Blob([arr], { type: 'image/jpeg' });
+      var fd = new FormData();
+      fd.append('photo', blob, faultId + '_report.jpg');
+      fd.append('faultId', faultId);
+      fd.append('type', 'report');
+      var base = (window.API_BASE || '');
+      fetch(base + '/api/upload-photo', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + getToken() },
+        body: fd
+      }).then(function(r) { return r.json(); })
+      .then(function() { console.log('回单照片上传成功'); })
+      .catch(function(e) { console.log('回单照片上传失败:', e); });
+    } catch(e) { console.log('回单照片处理失败:', e); }
+  });
+}
+
+function closeOrderDetail() {
+  document.getElementById('orderDetailModal').style.display = 'none';
+  _currentOrderId = null;
+}
+
+function formatNow() {
+  var d = new Date();
+  var pad = function(n){return n<10?'0'+n:n};
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+}
+
+// ==================== 施工日志 ====================
+var _logProjectLoaded = false;
+
+function dailyLogHeaders(json) {
+  var h = {};
+  var token = getToken();
+  if (token) h['Authorization'] = 'Bearer ' + token;
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+}
+
+function initDailyLogView() {
+  var dt = document.getElementById('logDate');
+  if (dt && !dt.value) dt.value = new Date().toISOString().slice(0, 10);
+  if (!_logProjectLoaded) {
+    _logProjectLoaded = true;
+    populateLogProjectSelect();
+  } else {
+    loadLogMeta();
+    loadDailyLogData();
+  }
+}
+
+function populateLogProjectSelect() {
+  var sel = document.getElementById('logProject');
+  if (!sel) return;
+  var cur = sel.value;
+  var html = '<option value="">全部项目</option>';
+  if (typeof PROJECT_OPTIONS !== 'undefined' && PROJECT_OPTIONS.length) {
+    PROJECT_OPTIONS.forEach(function(p) {
+      html += '<option value="' + p + '">' + p + '</option>';
+    });
+  }
+  sel.innerHTML = html;
+  if (cur) sel.value = cur;
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/projects?_t=' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (!json.success || !Array.isArray(json.data)) { loadLogMeta(); return; }
+      var existing = {};
+      Array.prototype.forEach.call(sel.options, function(o) { existing[o.value] = true; });
+      json.data.forEach(function(prj) {
+        var name = prj.name || '';
+        if (!name || existing[name]) return;
+        var opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+        existing[name] = true;
+      });
+      loadLogMeta();
+      loadDailyLogData();
+    })
+    .catch(function() { loadLogMeta(); loadDailyLogData(); });
+}
+
+function loadLogMeta() {
+  var token = getToken();
+  if (!token) return;
+  var project = (document.getElementById('logProject') || {}).value || '';
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/daily-log/meta?project=' + encodeURIComponent(project), {
+    headers: dailyLogHeaders()
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (!json.success) {
+        if (json.message) showToast(json.message);
+        return;
+      }
+      var meta = (json.data && json.data.meta) || {};
+      var set = function(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.value = val || '';
+      };
+      set('logEngName', meta.engineeringName);
+      set('logOwnerUnit', meta.ownerUnit);
+      set('logSupervisorUnit', meta.supervisorUnit);
+      set('logContractorUnit', meta.contractorUnit);
+    })
+    .catch(function() {});
+}
+
+function saveLogMeta() {
+  var token = getToken();
+  if (!token) { showToast('请先登录'); return; }
+  var project = (document.getElementById('logProject') || {}).value || '';
+  var body = {
+    project: project,
+    meta: {
+      engineeringName: (document.getElementById('logEngName') || {}).value || '',
+      ownerUnit: (document.getElementById('logOwnerUnit') || {}).value || '',
+      supervisorUnit: (document.getElementById('logSupervisorUnit') || {}).value || '',
+      contractorUnit: (document.getElementById('logContractorUnit') || {}).value || ''
+    }
+  };
+  var base = (window.API_BASE || '');
+  fetch(base + '/api/daily-log/meta', {
+    method: 'POST',
+    headers: dailyLogHeaders(true),
+    body: JSON.stringify(body)
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (json.success) showToast('工程信息已保存');
+      else showToast(json.message || json.error || '保存失败');
+    })
+    .catch(function() { showToast('保存失败，请检查网络'); });
+}
+
+function previewDailyLog() {
+  loadDailyLogData();
+}
+
+var _logDayPhotos = [];
+var _logPhotoSelected = {};
+
+function logPhotoThumbUrl(p) {
+  var base = (window.API_BASE || window.location.origin || '').replace(/\/$/, '');
+  var token = getToken();
+  if (p && p.id && token) {
+    return base + '/api/uploads/thumb?id=' + encodeURIComponent(p.id) +
+      '&token=' + encodeURIComponent(token) + '&_t=' + Date.now();
+  }
+  var path = (p && p.thumb) || '';
+  if (!path) return '';
+  if (path.indexOf('http') === 0) return path;
+  var segs = path.split('/');
+  var fname = segs.pop() || '';
+  return base + segs.join('/') + '/' + encodeURIComponent(fname);
+}
+
+function onLogPhotoThumbError(img) {
+  if (!img || img.dataset.fallback) return;
+  img.dataset.fallback = '1';
+  img.style.display = 'none';
+  var ph = img.nextElementSibling;
+  if (ph && ph.classList.contains('log-photo-ph')) ph.style.display = 'flex';
+}
+
+function toggleLogPhotoPicker() {
+  var wrap = document.getElementById('logPhotoPickerWrap');
+  if (!wrap) return;
+  var mode = getLogPhotoMode();
+  var show = mode !== 'none' && _logDayPhotos.length > 0;
+  wrap.style.display = show ? '' : 'none';
+}
+
+function updateLogPhotoPickHint() {
+  var hint = document.getElementById('logPhotoPickHint');
+  if (!hint) return;
+  var n = 0;
+  _logDayPhotos.forEach(function(p) { if (_logPhotoSelected[p.id]) n++; });
+  hint.textContent = '已选 ' + n + ' / ' + _logDayPhotos.length + ' 张';
+  if (n > 15 && getLogPhotoMode() === 'share') {
+    hint.innerHTML = '已选 <b>' + n + '</b> / ' + _logDayPhotos.length + ' 张 · <span style="color:#e65100">较多，分享建议不超过 12 张</span>';
+  }
+}
+
+function renderLogPhotoPicker() {
+  var box = document.getElementById('logPhotoPicker');
+  if (!box) return;
+  if (!_logDayPhotos.length) {
+    box.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;font-size:12px;padding:12px">当天暂无可选照片</div>';
+    toggleLogPhotoPicker();
+    return;
+  }
+  box.innerHTML = _logDayPhotos.map(function(p) {
+    var checked = !!_logPhotoSelected[p.id];
+    var t = (p.time || '').length >= 16 ? p.time.slice(11, 16) : (p.time || '');
+    var cap = (p.caption || p.point || p.build || '照片').slice(0, 12);
+    var thumb = logPhotoThumbUrl(p);
+    var pid = String(p.id || '').replace(/'/g, "\\'");
+    return '<label style="display:block;border:2px solid ' + (checked ? '#1565c0' : '#e0e0e0') + ';border-radius:8px;overflow:hidden;background:#fff;cursor:pointer">' +
+      '<div style="position:relative;background:#f0f0f0;min-height:72px">' +
+        '<img src="' + thumb + '" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:100%;height:72px;object-fit:cover;display:block" onerror="onLogPhotoThumbError(this)">' +
+        '<div class="log-photo-ph" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:28px;color:#bbb;background:#f0f0f0">📷</div>' +
+        '<input type="checkbox" data-log-photo-id="' + pid + '" ' + (checked ? 'checked' : '') +
+          ' onchange="toggleLogPhotoSelect(\'' + pid + '\',this.checked)" style="position:absolute;top:4px;left:4px;width:18px;height:18px;z-index:2">' +
+      '</div>' +
+      '<div style="padding:4px 6px;font-size:10px;color:#555;line-height:1.3">' + t + ' ' + cap + '</div>' +
+    '</label>';
+  }).join('');
+  toggleLogPhotoPicker();
+  updateLogPhotoPickHint();
+}
+
+function toggleLogPhotoSelect(id, on) {
+  _logPhotoSelected[id] = !!on;
+  renderLogPhotoPicker();
+}
+
+function selectAllLogPhotos(on) {
+  _logDayPhotos.forEach(function(p) { _logPhotoSelected[p.id] = !!on; });
+  renderLogPhotoPicker();
+}
+
+function getSelectedLogPhotoIds() {
+  var ids = [];
+  _logDayPhotos.forEach(function(p) {
+    if (_logPhotoSelected[p.id]) ids.push(String(p.id));
+  });
+  return ids;
+}
+
+function loadDailyLogData() {
+  var token = getToken();
+  if (!token) { showToast('请先登录'); return; }
+  var day = (document.getElementById('logDate') || {}).value;
+  if (!day) { showToast('请选择日期'); return; }
+  var project = (document.getElementById('logProject') || {}).value || '';
+  var base = (window.API_BASE || '');
+  var url = base + '/api/daily-log?date=' + encodeURIComponent(day) +
+    '&project=' + encodeURIComponent(project);
+  var preview = document.getElementById('logPreview');
+  if (preview) preview.textContent = '加载中…';
+  var loadTimer = setTimeout(function() {
+    if (preview && preview.textContent === '加载中…') {
+      preview.textContent = '加载超时，请点预览重试';
+      showToast('加载超时');
+    }
+  }, 30000);
+  fetch(url, { headers: dailyLogHeaders(), cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      clearTimeout(loadTimer);
+      if (!json.success) {
+        if (preview) preview.textContent = json.message || '加载失败';
+        showToast(json.message || '加载失败');
+        return;
+      }
+      var d = json.data || {};
+      var count = d.count || 0;
+      var photos = d.photos || [];
+      var lines = [];
+      if (count === 0) {
+        lines.push('当天暂无施工记录' + (project ? '（' + project + '）' : ''));
+      } else {
+        lines.push('共 ' + count + ' 条记录，' + (d.photoCount || photos.length) + ' 张照片可勾选');
+        (d.items || []).slice(0, 6).forEach(function(it) {
+          var t = (it.time || '').length >= 16 ? it.time.slice(11, 16) : (it.time || '');
+          lines.push(t + ' ' + (it.point || it.build || ''));
+        });
+        if (count > 6) lines.push('… 还有 ' + (count - 6) + ' 条');
+      }
+      if (preview) preview.innerHTML = lines.map(function(l) {
+        return '<div style="margin-bottom:4px">' + l + '</div>';
+      }).join('');
+
+      var prevSel = _logPhotoSelected;
+      _logDayPhotos = photos;
+      _logPhotoSelected = {};
+      photos.forEach(function(p) {
+        _logPhotoSelected[p.id] = Object.prototype.hasOwnProperty.call(prevSel, p.id) ? !!prevSel[p.id] : true;
+      });
+      renderLogPhotoPicker();
+    })
+    .catch(function() {
+      clearTimeout(loadTimer);
+      if (preview) preview.textContent = '网络错误，请重试';
+      showToast('加载失败');
+    });
+}
+
+function isWeChatBrowser() {
+  return /MicroMessenger/i.test(navigator.userAgent || '');
+}
+
+function isMobileExportEnv() {
+  var ua = navigator.userAgent || '';
+  return /iPhone|iPad|iPod|Android|MicroMessenger/i.test(ua);
+}
+
+var _pendingLogShare = null;
+var _logExporting = false;
+var _logExportWatchdog = null;
+
+function xhrBlobGet(url, headers, timeoutMs) {
+  timeoutMs = timeoutMs || 180000;
+  return new Promise(function(resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    var settled = false;
+    function done(fn, val) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(val);
+    }
+    var timer = setTimeout(function() {
+      try { xhr.abort(); } catch (e) {}
+      done(reject, new Error('生成超时，请减少勾选照片或改选「分享版」'));
+    }, timeoutMs);
+    xhr.open('GET', url);
+    xhr.responseType = 'blob';
+    if (headers) {
+      Object.keys(headers).forEach(function(k) { xhr.setRequestHeader(k, headers[k]); });
+    }
+    xhr.onload = function() {
+      var ctype = (xhr.getResponseHeader('Content-Type') || '').toLowerCase();
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (ctype.indexOf('json') >= 0) {
+          var reader = new FileReader();
+          reader.onload = function() {
+            try {
+              var j = JSON.parse(reader.result);
+              done(reject, new Error((j && (j.message || j.error)) || '导出失败'));
+            } catch (e) {
+              done(reject, new Error('导出失败'));
+            }
+          };
+          reader.onerror = function() { done(reject, new Error('导出失败')); };
+          reader.readAsText(xhr.response);
+          return;
+        }
+        var blob = xhr.response;
+        if (!blob || blob.size < 64) {
+          done(reject, new Error('生成的文件为空，请先预览确认当天有施工记录'));
+          return;
+        }
+        done(resolve, {
+          blob: blob,
+          getResponseHeader: function(n) { return xhr.getResponseHeader(n); }
+        });
+        return;
+      }
+      if (ctype.indexOf('json') >= 0 && xhr.response) {
+        var r2 = new FileReader();
+        r2.onload = function() {
+          try {
+            var j = JSON.parse(r2.result);
+            done(reject, new Error((j && (j.message || j.error)) || ('导出失败（' + xhr.status + '）')));
+          } catch (e) {
+            done(reject, new Error('导出失败（' + xhr.status + '）'));
+          }
+        };
+        r2.readAsText(xhr.response);
+      } else {
+        done(reject, new Error('导出失败（' + xhr.status + '）'));
+      }
+    };
+    xhr.onerror = function() { done(reject, new Error('网络异常，请稍后重试')); };
+    xhr.onabort = function() { done(reject, new Error('生成超时，请减少勾选照片或改选「分享版」')); };
+    xhr.send();
+  });
+}
+
+function fetchWithTimeout(url, options, timeoutMs) {
+  timeoutMs = timeoutMs || 120000;
+  return new Promise(function(resolve, reject) {
+    var timer = null;
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var opts = options || {};
+    if (ctrl) opts.signal = ctrl.signal;
+    timer = setTimeout(function() {
+      if (ctrl) ctrl.abort();
+      reject(new Error('生成超时，当天照片较多请稍后重试'));
+    }, timeoutMs);
+    fetch(url, opts).then(function(resp) {
+      clearTimeout(timer);
+      resolve(resp);
+    }).catch(function(err) {
+      clearTimeout(timer);
+      if (err && err.name === 'AbortError') {
+        reject(new Error('生成超时，当天照片较多请稍后重试'));
+        return;
+      }
+      reject(err);
+    });
+  });
+}
+
+function setLogExportBusy(busy) {
+  _logExporting = busy;
+  var btn = document.getElementById('btnExportDailyLog');
+  if (btn) {
+    btn.disabled = busy;
+    btn.style.opacity = busy ? '0.65' : '1';
+    btn.textContent = busy ? '生成中…' : '📤 导出并分享';
+  }
+  try {
+    showLoading(busy, busy ? '正在生成施工日志…' : '');
+  } catch (e) {}
+  if (_logExportWatchdog) {
+    clearTimeout(_logExportWatchdog);
+    _logExportWatchdog = null;
+  }
+  if (busy) {
+    _logExportWatchdog = setTimeout(function() {
+      if (!_logExporting) return;
+      _logExporting = false;
+      try { showLoading(false); } catch (e) {}
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.textContent = '📤 导出并分享';
+      }
+      showToast('生成超时，请减少照片或改选「分享版」后重试');
+    }, 185000);
+  }
+}
+
+function parseExportFilename(response, fallback) {
+  var dispo = '';
+  if (response && response.getResponseHeader) {
+    dispo = response.getResponseHeader('Content-Disposition') || '';
+  } else if (response && response.headers && response.headers.get) {
+    dispo = response.headers.get('Content-Disposition') || '';
+  }
+  if (!dispo) return fallback;
+  // 优先 RFC5987 中文文件名，避免 ASCII fallback 变成 --20260627.docx
+  var utf8 = /filename\*=UTF-8''([^;\n]+)/i.exec(dispo);
+  if (utf8 && utf8[1]) {
+    try { return decodeURIComponent(utf8[1].trim()); } catch (e) {}
+  }
+  var quoted = /filename="([^"]+)"/i.exec(dispo);
+  if (quoted && quoted[1] && quoted[1].indexOf('--') < 0) return quoted[1];
+  var plain = /filename=([^;\s]+)/i.exec(dispo);
+  if (plain && plain[1]) {
+    var n = plain[1].replace(/^["']|["']$/g, '');
+    if (n && n.indexOf('--') < 0 && /\.docx$/i.test(n)) return n;
+  }
+  return fallback;
+}
+
+function buildDirectLogExportUrl(day, project, token, photoMode, photoIds) {
+  var base = (window.API_BASE || window.location.origin || '').replace(/\/$/, '');
+  var q = 'date=' + encodeURIComponent(day) +
+    '&project=' + encodeURIComponent(project || '') +
+    '&token=' + encodeURIComponent(token) +
+    '&photos=' + encodeURIComponent(photoMode || 'share');
+  if (photoMode !== 'none' && photoIds && photoIds.length) {
+    q += '&photo_ids=' + encodeURIComponent(photoIds.join(','));
+  }
+  return base + '/api/daily-log/export?' + q;
+}
+
+function buildDailyLogFileShareUrl(day, project, token, fname, photoMode, photoIds) {
+  var base = (window.API_BASE || window.location.origin || '').replace(/\/$/, '');
+  var q = 'date=' + encodeURIComponent(day) +
+    '&project=' + encodeURIComponent(project || '') +
+    '&token=' + encodeURIComponent(token) +
+    '&photos=' + encodeURIComponent(photoMode || 'share');
+  if (photoMode !== 'none' && photoIds && photoIds.length) {
+    q += '&photo_ids=' + encodeURIComponent(photoIds.join(','));
+  }
+  if (fname) q += '&fname=' + encodeURIComponent(fname);
+  return base + '/api/daily-log/file-share?' + q;
+}
+
+function formatLogFileSize(bytes) {
+  if (!bytes || bytes < 1) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function getLogPhotoMode() {
+  var el = document.getElementById('logPhotoMode');
+  return (el && el.value) ? el.value : 'share';
+}
+
+function downloadBlobFile(blob, fname) {
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = fname;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 8000);
+}
+
+function normalizeLogFname(fname) {
+  var name = (fname || '施工日志').trim() || '施工日志';
+  if (!/\.docx$/i.test(name)) name += '.docx';
+  return name;
+}
+
+function tryShareDailyLogAsFile(p) {
+  if (!navigator.share || !p || !p.blob) return Promise.reject(new Error('no share'));
+  var fname = normalizeLogFname(p.fname);
+  // 多数安卓浏览器只认 octet-stream，docx MIME 常被拒
+  var types = ['application/octet-stream', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  var i = 0;
+  function next() {
+    if (i >= types.length) return Promise.reject(new Error('share failed'));
+    var file;
+    try {
+      file = new File([p.blob], fname, { type: types[i++], lastModified: Date.now() });
+    } catch (e) {
+      return next();
+    }
+    return navigator.share({ files: [file], title: fname }).catch(function(err) {
+      if (err && err.name === 'AbortError') throw err;
+      return next();
+    });
+  }
+  return next();
+}
+
+function openLogFileSharePage(p) {
+  if (!p || !p.fileShareUrl) return false;
+  try {
+    window.location.href = p.fileShareUrl;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function wechatSaveDailyLog(p) {
+  if (!p) return;
+  var fname = normalizeLogFname(p.fname);
+  var url = p.directExportUrl;
+  if (!url && p.day) {
+    url = buildDirectLogExportUrl(p.day, p.project || '', getToken(), p.photoMode || 'share', p.photoIds || []);
+  }
+  if (p.blob) {
+    try { downloadBlobFile(p.blob, fname); } catch (e) {}
+  }
+  if (url) {
+    setTimeout(function() { window.location.href = url; }, 500);
+  }
+}
+
+function fallbackSaveDailyLog(p, hint) {
+  if (!p) return;
+  if (isWeChatBrowser()) {
+    wechatSaveDailyLog(p);
+    showToast(hint || '微信内已触发下载，请到聊天「＋」→「文件」发送');
+    return;
+  }
+  if (!p.blob) return;
+  downloadBlobFile(p.blob, normalizeLogFname(p.fname));
+  showToast(hint || '已保存，请到微信「＋」→「文件」发送');
+}
+
+function showLogShareModal() {
+  var p = _pendingLogShare;
+  if (!p) return;
+  var fnameEl = document.getElementById('logShareFname');
+  if (fnameEl) fnameEl.textContent = normalizeLogFname(p.fname);
+  var sizeEl = document.getElementById('logShareSize');
+  if (sizeEl) sizeEl.textContent = '文件大小：' + (p.sizeLabel || formatLogFileSize(p.blob.size));
+  var inWx = isWeChatBrowser();
+  var wxTip = document.getElementById('logShareWechatTip');
+  if (wxTip) wxTip.style.display = inWx ? '' : 'none';
+  var wxHint = document.getElementById('logShareWxHint');
+  if (wxHint) wxHint.style.display = inWx ? '' : 'none';
+  var shareBtn = document.getElementById('btnShareLogWechat');
+  if (shareBtn) {
+    shareBtn.textContent = inWx ? '💾 再次下载 Word' : '📤 发送到其他应用';
+  }
+  document.getElementById('logShareModal').style.display = 'flex';
+}
+
+function shareDailyLogToOtherApps() {
+  var p = _pendingLogShare;
+  if (!p || !p.blob) { showToast('请重新导出'); return; }
+  if (isWeChatBrowser()) {
+    wechatSaveDailyLog(p);
+    showToast('微信内请用「＋」→「文件」发送刚下载的 Word');
+    return;
+  }
+  tryShareDailyLogAsFile(p)
+    .then(function() {
+      closeLogShareModal();
+      showToast('请选择要使用的应用');
+    })
+    .catch(function(err) {
+      if (err && err.name === 'AbortError') return;
+      if (openLogFileSharePage(p)) return;
+      fallbackSaveDailyLog(p, '无法调起分享，已自动保存，请到微信「文件」中发送');
+    });
+}
+
+function presentDailyLogAfterExport() {
+  var p = _pendingLogShare;
+  if (!p) return;
+  p.sizeLabel = formatLogFileSize(p.blob.size);
+  p.fname = normalizeLogFname(p.fname);
+
+  if (!isMobileExportEnv()) {
+    downloadBlobFile(p.blob, p.fname);
+    showToast('已下载 ' + p.sizeLabel);
+    return;
+  }
+
+  if (isWeChatBrowser()) {
+    fallbackSaveDailyLog(p, '微信内已保存文件，请到聊天「＋」→「文件」发送');
+    showLogShareModal();
+    return;
+  }
+
+  tryShareDailyLogAsFile(p)
+    .then(function() {
+      showToast('请选择微信、钉钉等应用');
+    })
+    .catch(function(err) {
+      if (err && err.name === 'AbortError') return;
+      if (p.blob.size > 12 * 1024 * 1024) {
+        showToast('文件较大（' + p.sizeLabel + '），建议改选「分享版」或「纯文字」');
+      }
+      showLogShareModal();
+    });
+}
+
+function closeLogShareModal() {
+  var el = document.getElementById('logShareModal');
+  if (el) el.style.display = 'none';
+}
+
+function saveDailyLogFile() {
+  var p = _pendingLogShare;
+  if (!p || !p.blob) { showToast('请重新导出'); return; }
+  if (isWeChatBrowser()) {
+    wechatSaveDailyLog(p);
+    showToast('已触发下载 ' + (p.sizeLabel || formatLogFileSize(p.blob.size)));
+    return;
+  }
+  var fname = normalizeLogFname(p.fname);
+  downloadBlobFile(p.blob, fname);
+  showToast('已保存 ' + (p.sizeLabel || formatLogFileSize(p.blob.size)));
+  closeLogShareModal();
+}
+
+function exportDailyLog() {
+  if (!canUseDailyLog()) {
+    showToast('队长账号无权导出施工日志');
+    return;
+  }
+  if (_logExporting) {
+    showToast('正在生成，请稍候');
+    return;
+  }
+  var token = getToken();
+  if (!token) { showToast('请先登录'); return; }
+  var base = (window.API_BASE || '').replace(/\/$/, '');
+  if (!base) {
+    showToast('请先设置服务器地址');
+    openServerModal();
+    return;
+  }
+  var day = (document.getElementById('logDate') || {}).value;
+  if (!day) { showToast('请选择日期'); return; }
+  var project = (document.getElementById('logProject') || {}).value || '';
+  var photoMode = getLogPhotoMode();
+  if (photoMode !== 'none' && _logDayPhotos.length > 0 && getSelectedLogPhotoIds().length === 0) {
+    showToast('请至少勾选一张照片，或改选「纯文字」');
+    return;
+  }
+  var selectedIds = getSelectedLogPhotoIds();
+  var apiUrl = base + '/api/daily-log/export?date=' + encodeURIComponent(day) +
+    '&project=' + encodeURIComponent(project) +
+    '&photos=' + encodeURIComponent(photoMode) +
+    (photoMode !== 'none' ? '&photo_ids=' + encodeURIComponent(selectedIds.join(',')) : '') +
+    '&_t=' + Date.now();
+  var fallbackName = (project || '施工日志') + '-施工日志-' + day.replace(/-/g, '') + '.docx';
+
+  setLogExportBusy(true);
+  showToast('正在生成 Word…');
+
+  xhrBlobGet(apiUrl, { 'Authorization': 'Bearer ' + token }, 180000)
+    .then(function(res) {
+      var fname = parseExportFilename(res, fallbackName);
+      return { blob: res.blob, fname: fname };
+    })
+    .then(function(res) {
+      var mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      var file = null;
+      try {
+        file = new File([res.blob], res.fname, { type: mime });
+      } catch (e) {
+        file = res.blob;
+        file.name = res.fname;
+      }
+      _pendingLogShare = {
+        blob: res.blob,
+        file: file,
+        fname: res.fname,
+        fileShareUrl: buildDailyLogFileShareUrl(day, project, token, res.fname, photoMode, selectedIds),
+        directExportUrl: buildDirectLogExportUrl(day, project, token, photoMode, selectedIds),
+        day: day,
+        project: project,
+        photoMode: photoMode,
+        photoIds: selectedIds.slice()
+      };
+      if (photoMode === 'full' && res.blob.size > 8 * 1024 * 1024) {
+        showToast('完整版较大（' + formatLogFileSize(res.blob.size) + '），分享失败可改选分享版');
+      }
+      setLogExportBusy(false);
+      if (isMobileExportEnv()) {
+        presentDailyLogAfterExport();
+        return;
+      }
+      downloadBlobFile(res.blob, res.fname);
+      showToast('导出成功，文件已下载');
+    })
+    .catch(function(err) {
+      var msg = (err && err.message) ? err.message : '导出失败';
+      if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) {
+        msg = '网络异常或生成超时，请稍后重试';
+      }
+      showToast(msg);
+    })
+    .finally(function() {
+      setLogExportBusy(false);
+    });
+}
+</script>
+
+<!-- 调试面板切换按钮 -->
+<div id="debugToggleBtn" style="position:fixed;bottom:80px;right:12px;width:40px;height:40px;background:#1a1a2e;color:#0f0;font-size:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:9998;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:1px solid #333" onclick="toggleDebugPanel()">🛠️</div>
+
+<!-- 全局加载层（OCR、施工日志导出等） -->
+<div class="loading-overlay" id="loadingOverlay" style="position:fixed;inset:0;z-index:2000">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingOverlayText">加载中…</div>
+  </div>
+</div>
+
+<!-- 调试面板 -->
+<div id="debugPanel" style="display:none;position:fixed;top:50px;left:8px;right:8px;max-height:60vh;overflow:auto;background:#1a1a2e;color:#0f0;font-size:11px;font-family:monospace;padding:10px;border-radius:8px;z-index:9999;white-space:pre-wrap;box-shadow:0 4px 20px rgba(0,0,0,0.5)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <span style="color:#ff0;font-weight:700">🛠️ 调试信息</span>
+    <span style="color:#fff;font-size:14px;cursor:pointer;padding:0 4px" onclick="toggleDebugPanel()">✕</span>
+  </div>
+  <div id="debugLog"></div>
+</div>
+</body>
+</html>

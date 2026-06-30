@@ -1,0 +1,67 @@
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name jxtw.site www.jxtw.site;
+
+    ssl_certificate     /root/.acme.sh/jxtw.site_ecc/fullchain.cer;
+    ssl_certificate_key /root/.acme.sh/jxtw.site_ecc/jxtw.site.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    root /www/wwwroot/tianwang;
+    client_max_body_size 50m;
+
+    location = / {
+        try_files /index.html =404;
+        add_header Cache-Control "no-cache";
+    }
+
+    location = /admin {
+        return 302 /?view=admin;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+    }
+
+    location /uploads/ {
+        alias /lhcos-data/tianwang/uploads/;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
+
+    location /files/ {
+        alias /lhcos-data/tianwang/;
+        expires 7d;
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache";
+    }
+
+    location ~ .*\.(gif|jpg|jpeg|png|bmp|swf|ico|webp)$ {
+        expires 7d;
+    }
+
+    location ~ .*\.(js|css)?$ {
+        expires 1h;
+    }
+
+    access_log /www/wwwlogs/tianwang_ssl_access.log;
+    error_log /www/wwwlogs/tianwang_ssl_error.log;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name jxtw.site www.jxtw.site;
+    return 301 https://$host$request_uri;
+}

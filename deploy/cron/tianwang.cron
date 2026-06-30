@@ -1,0 +1,1 @@
+0 3 * * * /usr/bin/python3 /www/wwwroot/tianwang/backend/backup_db.py >> /www/wwwlogs/tianwang_backup.log 2>&1
